@@ -26,6 +26,29 @@ const S = 0.78;
 /* el trazo va medio trazo hacia dentro para que el svg no lo recorte */
 const IN = 0.75;
 
+/**
+ * Teclado y correcciones adecuados a cada tipo de campo en móvil: numérico para números (y códigos de un solo uso, que además
+ * se rellenan solos desde el SMS), sin mayúscula inicial ni autocorrector en emails, URLs y contraseñas.
+ * Lo que se pase explícito al campo manda sobre esto.
+ */
+export function fieldHints(type: string, autoComplete?: string, step?: string | number): InputHTMLAttributes<HTMLInputElement> {
+  if (autoComplete === 'one-time-code') return { inputMode: 'numeric', autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false };
+  switch (type) {
+    case 'number':
+      return { inputMode: step !== undefined && step !== 'any' && !Number.isInteger(Number(step)) ? 'decimal' : 'numeric' };
+    case 'email':
+      return { inputMode: 'email', autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false };
+    case 'url':
+      return { inputMode: 'url', autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false };
+    case 'tel':
+      return { inputMode: 'tel' };
+    case 'password':
+      return { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false };
+    default:
+      return {};
+  }
+}
+
 type Props = {
   label: string;
   corner?: number;
@@ -95,6 +118,7 @@ export function LabelInput({ label, corner = 12, defaultValue, type = 'text', on
         </label>
 
         <input
+          {...fieldHints(type, rest.autoComplete, rest.step)}
           {...rest}
           id={id}
           className="lbi-field"

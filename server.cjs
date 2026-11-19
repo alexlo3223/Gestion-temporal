@@ -4,6 +4,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_FILE = path.resolve(__dirname, process.env.DATA_FILE || 'gestor-datos.json');
@@ -15,6 +16,38 @@ function readStatic(rel) {
   const file = path.join(__dirname, 'dist', rel);
   if (!file.startsWith(path.join(__dirname, 'dist'))) return null; // evita ../
   try { return fs.readFileSync(file); } catch { return null; }
+}
+
+// Compresión de lo estático: Brotli si el navegador lo acepta y, si no, gzip. Se comprime una vez y se guarda en memoria
+// (lo compilado no cambia mientras el servidor corre; si cambia el archivo, cambia su fecha y se recomprime).
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.svg', '.json', '.webmanifest', '.ico']);
+const compressed = new Map();
+function encodingFor(req) {
+  const accepted = String(req.headers['accept-encoding'] || '')
+    .split(',')
+    .map((part) => part.trim().split(';')[0].toLowerCase());
+  if (accepted.includes('br')) return 'br';
+  if (accepted.includes('gzip')) return 'gzip';
+  return null;
+}
+function compress(key, body, encoding) {
+  const hit = compressed.get(key);
+  if (hit) return Promise.resolve(hit);
+  return new Promise((resolve, reject) => {
+    const done = (err, out) => {
+      if (err) return reject(err);
+      compressed.set(key, out);
+      resolve(out);
+    };
+    if (encoding === 'br') zlib.brotliCompress(body, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9 } }, done);
+    else zlib.gzip(body, { level: 9 }, done);
+  });
+}
+
+// Los archivos de /assets/ llevan el hash de su contenido en el nombre: se pueden guardar para siempre (también en una CDN).
+// El index.html se revalida siempre, para que una versión nueva apunte a los archivos nuevos.
+function cacheControl(rel) {
+  return rel.startsWith('assets/') ? 'public, max-age=31536000, immutable' : 'no-cache';
 }
 
 function authorized(req) {
@@ -74,8 +107,19 @@ const server = http.createServer((req, res) => {
   const found = readStatic(rel);
   const body = found ?? readStatic('index.html');
   if (!body) { res.writeHead(404).end('Falta compilar: npm run build'); return; }
-  const type = TYPES[path.extname(found ? rel : 'index.html')] || 'application/octet-stream';
-  res.writeHead(200, { 'Content-Type': type }).end(body);
+  const served = found ? rel : 'index.html';
+  const ext = path.extname(served);
+  const headers = { 'Content-Type': TYPES[ext] || 'application/octet-stream', 'Cache-Control': cacheControl(served), Vary: 'Accept-Encoding' };
+  const encoding = COMPRESSIBLE.has(ext) ? encodingFor(req) : null;
+  if (!encoding || body.length < 1024) {
+    res.writeHead(200, headers).end(body);
+    return;
+  }
+  let stamp = 0;
+  try { stamp = fs.statSync(path.join(__dirname, 'dist', served)).mtimeMs; } catch { /* sin fecha: no se reutiliza entre cambios */ }
+  compress(`${encoding}:${served}:${stamp}`, body, encoding)
+    .then((out) => res.writeHead(200, { ...headers, 'Content-Encoding': encoding, 'Content-Length': out.length }).end(out))
+    .catch(() => res.writeHead(200, headers).end(body)); // si falla la compresión, se sirve sin comprimir
 });
 
 if (require.main === module) {

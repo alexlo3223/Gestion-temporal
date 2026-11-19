@@ -1,3 +1,4 @@
+import { useLiquidGlass } from '../../hooks/useLiquidGlass';
 import { type PointerEvent, type RefObject, useLayoutEffect, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import './GlassDock.css';
@@ -43,6 +44,7 @@ export function GlassDock({
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const bar = useRef<HTMLElement | null>(null);
+  useLiquidGlass(bar);
   const down = useRef(false);
   /* un dedo ya eligió al levantarse: el click que llega después (dirigido
      al elemento donde EMPEZÓ el toque) no debe deshacerlo */

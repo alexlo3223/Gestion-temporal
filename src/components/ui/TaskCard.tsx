@@ -9,8 +9,10 @@ import { ColorDot, PriorityBadge } from './primitives';
 const revealOnHover = 'lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100';
 
 /** Tarjeta arrastrable del tablero de tareas. */
-export function TaskCard({ task, state, today }: { task: Task; state: AppState; today: string }) {
+/** `native`: arrastre HTML5 propio; el kanban de ReUI lo desactiva porque arrastra con dnd-kit. */
+export function TaskCard({ task, state, today, native = true }: { task: Task; state: AppState; today: string; native?: boolean }) {
   const project = projectOf(state, task.projectId);
+  const phase = project.phases.find((f) => f.id === task.phaseId);
   const done = task.status === 'done';
   const late = !done && task.due && task.due < today;
   const canStart = !done && state.timer.taskId !== task.id;
@@ -19,11 +21,15 @@ export function TaskCard({ task, state, today }: { task: Task; state: AppState; 
 
   return (
     <article
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', task.id);
-        e.dataTransfer.effectAllowed = 'move';
-      }}
+      draggable={native || undefined}
+      onDragStart={
+        native
+          ? (e) => {
+              e.dataTransfer.setData('text/plain', task.id);
+              e.dataTransfer.effectAllowed = 'move';
+            }
+          : undefined
+      }
       className={`group flex cursor-grab flex-col gap-space-xs rounded-lg bg-surface-container p-space-md transition-colors hover:bg-surface-container-high active:cursor-grabbing ${done ? 'opacity-70' : ''}`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -70,7 +76,10 @@ export function TaskCard({ task, state, today }: { task: Task; state: AppState; 
       <div className="flex items-center justify-between gap-2 pt-space-xs">
         <span className="flex min-w-0 items-center gap-1.5 text-label-sm text-on-surface-variant">
           <ColorDot color={project.color} />
-          <span className="truncate">{project.name}</span>
+          <span className="truncate">
+            {project.name}
+            {phase && <span className="text-outline"> › {phase.name}</span>}
+          </span>
         </span>
         <span className="flex shrink-0 items-center gap-0.5">
           <span className={`mr-1 flex items-center gap-0.5 text-label-caps ${late ? 'text-error' : 'text-outline'}`}>

@@ -10,7 +10,7 @@ import { findTask, logsInRange, periodRange, projectOf } from './store/selectors
 import { store } from './store/store';
 import { completePomodoro, isRunning, pauseTimer, remainingMs, startTimer, stopTimer } from './store/timer';
 import { notify } from './store/toasts';
-import type { AppState, CalendarMode, DrawerState, FormInput, HomeWidget, Period, QuickFilter, TaskStatus, UiState } from './types';
+import type { AppState, DrawerState, FormInput, HomeWidget, Period, QuickFilter, TaskStatus, UiState } from './types';
 
 const STATUS_LABELS: Record<TaskStatus, string> = { todo: 'Por hacer', doing: 'En progreso', done: 'Completada' };
 
@@ -52,8 +52,6 @@ export const actions = {
     store.setUi({ quick: quick.includes(filter) ? quick.filter((q) => q !== filter) : [...quick, filter] });
   },
   /** Mueve el calendario `offset` unidades de la vista actual; 0 vuelve a hoy. */
-  shiftCalendar: (offset: number) => store.setUi({ calendarOffset: offset === 0 ? 0 : store.getSnapshot().ui.calendarOffset + offset }),
-  setCalendarView: (calendarView: CalendarMode, calendarOffset = 0) => store.setUi({ calendarView, calendarOffset }),
   setPeriod: (period: Period) => store.setUi({ period }),
 
   // ---------- tareas ----------
@@ -95,7 +93,13 @@ export const actions = {
     }
   },
 
+  setTaskDates(id: string, dates: { start: string; due: string }) {
+    run((s) => mutations.setTaskDates(s, id, dates));
+  },
   // ---------- calendario ----------
+  rescheduleEvent(id: string, to: { date: string; start: string; end: string; projectId?: string }) {
+    run((s) => mutations.rescheduleEvent(s, id, to));
+  },
   saveEvent(input: FormInput) {
     const result = run((s) => mutations.saveEvent(s, input, context()), { closeDrawer: true });
     if (result) success(result.created ? 'Evento creado' : 'Evento actualizado', result.event.title);
@@ -115,7 +119,34 @@ export const actions = {
     if (!removed) return;
     const { ui } = store.getSnapshot();
     if (ui.projects.includes(id)) store.setUi({ projects: ui.projects.filter((p) => p !== id) });
-    undo(`Carpeta «${removed.project.name}» eliminada`, (s) => mutations.restoreProject(s, removed.project, removed.index));
+    undo(`Carpeta «${removed.project.name}» eliminada`, (s) => mutations.restoreProject(s, removed));
+  },
+
+  // ---------- participantes, chat y documentos ----------
+  addMember(projectId: string, input: FormInput) {
+    const member = run((s) => mutations.addMember(s, projectId, input, context()));
+    if (member) success('Participante añadido', member.name);
+    return !!member;
+  },
+  removeMember(projectId: string, memberId: string) {
+    const removed = run((s) => mutations.removeMember(s, projectId, memberId));
+    if (removed) undo(`«${removed.member.name}» ya no participa`, (s) => mutations.restoreMember(s, projectId, removed.member, removed.index));
+  },
+  postMessage(projectId: string, input: FormInput) {
+    return !!run((s) => mutations.postMessage(s, projectId, input, context()));
+  },
+  deleteMessage(id: string) {
+    const removed = run((s) => mutations.deleteMessage(s, id));
+    if (removed) undo('Mensaje eliminado', (s) => mutations.restoreMessage(s, removed.message, removed.index));
+  },
+  saveDoc(projectId: string, input: FormInput) {
+    const result = run((s) => mutations.saveDoc(s, projectId, input, context()));
+    if (result) success(result.created ? 'Documento creado' : 'Documento guardado', result.doc.title);
+    return result?.doc;
+  },
+  deleteDoc(id: string) {
+    const removed = run((s) => mutations.deleteDoc(s, id));
+    if (removed) undo(`«${removed.doc.title}» eliminado`, (s) => mutations.restoreDoc(s, removed.doc, removed.index));
   },
 
   // ---------- ajustes y datos ----------

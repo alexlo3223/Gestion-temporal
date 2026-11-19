@@ -11,15 +11,17 @@ export const ctx = (overrides: Partial<MutationContext> = {}): MutationContext =
 
 export function createState(): AppState {
   return {
-    version: 2,
+    version: 5,
     settings: { name: 'Test', secondTimezone: 'UTC', workStart: 9, workEnd: 18, pomodoroMinutes: 25, weeklyGoalHours: 20, notify: false },
-    projects: [{ id: 'p1', name: 'Proyecto', color: '#3b82f6', description: '' }],
+    projects: [{ id: 'p1', name: 'Proyecto', color: '#3b82f6', description: '', members: [], phases: [] }],
     tasks: [
-      { id: 't1', title: 'Tarea 1', description: '', projectId: 'p1', priority: 'normal', status: 'todo', estimateMin: 30, spentMin: 0, due: TODAY, doneAt: '' },
-      { id: 't2', title: 'Tarea 2', description: '', projectId: 'p1', priority: 'alta', status: 'todo', estimateMin: 60, spentMin: 10, due: '', doneAt: '' },
+      { id: 't1', title: 'Tarea 1', description: '', projectId: 'p1', phaseId: '', start: '', dependsOn: [], priority: 'normal', status: 'todo', estimateMin: 30, spentMin: 0, due: TODAY, doneAt: '' },
+      { id: 't2', title: 'Tarea 2', description: '', projectId: 'p1', phaseId: '', start: '', dependsOn: [], priority: 'alta', status: 'todo', estimateMin: 60, spentMin: 10, due: '', doneAt: '' },
     ],
     events: [],
     logs: [],
+    messages: [],
+    docs: [],
     timer: createIdleTimer(),
   };
 }

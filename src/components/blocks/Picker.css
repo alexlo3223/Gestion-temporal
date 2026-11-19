@@ -16,8 +16,10 @@
   transition: background-color 0.2s;
 }
 
+@media (hover: hover) {
 .pik-pill:hover {
   background: var(--color-surface-container-high);
+}
 }
 
 .pik-rail {
@@ -94,9 +96,14 @@
   transition: background-color 0.15s;
 }
 
-.pik-row:hover,
 .pik-row:focus-visible {
   background: var(--color-surface-container-high);
+}
+
+@media (hover: hover) {
+.pik-row:hover {
+  background: var(--color-surface-container-high);
+}
 }
 
 .pik-av {
@@ -159,6 +166,8 @@
   text-align: left;
 }
 
+@media (hover: hover) {
 .pik-clear:hover {
   text-decoration: underline;
+}
 }

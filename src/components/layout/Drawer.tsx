@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { actions } from '../../actions';
+import { useLiquidGlass } from '../../hooks/useLiquidGlass';
+import { shake } from '../../lib/shake';
 import { findEvent, findProject, findTask } from '../../store/selectors';
 import type { AppState, DrawerState } from '../../types';
 import { EventForm } from '../forms/EventForm';
@@ -23,6 +25,14 @@ function DrawerContent({ drawer, state, fieldError }: { drawer: NonNullable<Draw
 export function Drawer({ drawer, state, fieldError }: { drawer: DrawerState; state: AppState; fieldError: FieldError }) {
   const returnFocus = useRef<HTMLElement | null>(null);
   const isOpen = drawer !== null;
+  const dialog = useRef<HTMLDivElement | null>(null);
+
+  /* un error de validación sacude el campo que falló (o el panel si no se sabe cuál); el objeto es nuevo en cada intento */
+  useEffect(() => {
+    if (!fieldError) return;
+    const field = dialog.current?.querySelector('.lbi[data-error="true"], [aria-invalid="true"]');
+    shake(field ?? dialog.current);
+  }, [fieldError]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -40,13 +50,15 @@ export function Drawer({ drawer, state, fieldError }: { drawer: DrawerState; sta
   /* la clave cambia con lo que se edita, así el formulario empieza limpio cada vez */
   const key = drawer ? `${drawer.type}-${'taskId' in drawer ? drawer.taskId : 'eventId' in drawer ? drawer.eventId : 'projectId' in drawer ? drawer.projectId : ''}` : '';
 
+  useLiquidGlass(dialog, undefined, isOpen, key);
+
   return (
     <AnimatePresence>
       {drawer && (
         <>
           <motion.div
             key="scrim"
-            className="fixed inset-0 z-[45] bg-black/60"
+            className="fixed inset-0 z-[45] bg-black/60 backdrop-blur-[3px]"
             onClick={actions.closeDrawer}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -55,10 +67,11 @@ export function Drawer({ drawer, state, fieldError }: { drawer: DrawerState; sta
           />
           <motion.div
             key={key}
+            ref={dialog}
             role="dialog"
             aria-modal="true"
             aria-labelledby="drawer-title"
-            className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto border-l border-border-strong bg-surface-container-low p-space-lg shadow-overlay sm:w-96"
+            className="fixed inset-y-0 right-0 z-50 w-full scroll-contain overflow-y-auto liquid-glass liquid-glass--modal p-space-lg sm:w-96"
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}

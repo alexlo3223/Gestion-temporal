@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/geist';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import './polish.css';
+
+@custom-variant dark (&:is(.dark *));
 
 /* Tokens del design system "Obsidian Chrono" (ver plantillas de Stitch) */
 @theme {
@@ -83,9 +88,47 @@
   --shadow-overlay: 0 16px 36px -4px rgb(0 0 0 / 0.7);
 }
 
+/*
+ * Puente shadcn → paleta de la app: los componentes de shadcn/ReUI usan nombres semánticos (bg-card, text-muted-foreground…)
+ * y aquí se enlazan a los tokens de «Obsidian Chrono». No se redefinen --color-primary / --color-secondary (ya son los de la app)
+ * ni los radios: así el aspecto del resto de la app no cambia.
+ */
+@theme inline {
+  --color-background: var(--color-surface);
+  --color-foreground: var(--color-on-surface);
+  --color-card: var(--color-surface-container-low);
+  --color-card-foreground: var(--color-on-surface);
+  --color-popover: var(--color-surface-container-high);
+  --color-popover-foreground: var(--color-on-surface);
+  --color-primary-foreground: var(--color-on-primary);
+  --color-secondary-foreground: var(--color-surface);
+  --color-muted: var(--color-surface-container);
+  --color-muted-foreground: var(--color-outline);
+  --color-accent: var(--color-surface-container-high);
+  --color-accent-foreground: var(--color-on-surface);
+  --color-destructive: var(--color-error);
+  --color-border: var(--color-border-card);
+  --color-input: var(--color-outline-variant);
+  --color-ring: var(--color-primary);
+  --color-invert-foreground: var(--invert-foreground);
+  --color-invert: var(--invert);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info-foreground: var(--info-foreground);
+  --color-info: var(--info);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+}
+
 @layer base {
   :root {
     color-scheme: dark;
+  }
+
+  /* bordes y contornos con el color de la app (sin esto, los bordes sin color toman el del texto) */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
   }
 
   body {
@@ -152,4 +195,28 @@
   .nav-link.active {
     @apply bg-surface-bright font-semibold text-on-surface;
   }
+}
+
+:root {
+  --destructive-foreground: var(--color-red-800);
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-900);
+  --info: var(--color-violet-500);
+  --info-foreground: var(--color-violet-900);
+  --warning: var(--color-yellow-500);
+  --warning-foreground: var(--color-yellow-900);
+  --invert: var(--color-zinc-900);
+  --invert-foreground: var(--color-zinc-50);
+}
+
+.dark {
+  --destructive-foreground: var(--color-red-600);
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-600);
+  --info: var(--color-violet-500);
+  --info-foreground: var(--color-violet-600);
+  --warning: var(--color-yellow-500);
+  --warning-foreground: var(--color-yellow-600);
+  --invert: var(--color-zinc-700);
+  --invert-foreground: var(--color-zinc-50);
 }

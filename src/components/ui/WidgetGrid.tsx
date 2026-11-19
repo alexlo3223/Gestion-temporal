@@ -1,113 +1,229 @@
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, GripVertical, Minus, Plus } from 'lucide-react';
-import { type CSSProperties, type ReactNode, useState } from 'react';
-import { GRID_COLS, HOME_WIDGETS, MAX_ROWS, MIN_SPAN } from '../../constants';
-import { placeWidget } from '../../store/layout';
-import type { HomeWidget, HomeWidgetId } from '../../types';
+import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragOverEvent, type DragStartEvent } from '@dnd-kit/core';
+import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { ChevronLeft, ChevronRight, GripVertical, Maximize2, Minimize2, Plus, X } from 'lucide-react';
+import { type CSSProperties, type DragEvent, type ReactNode, useRef, useState } from 'react';
+import { HOME_COLUMNS, HOME_GAP, HOME_WIDGETS, WIDGET_SIZE } from '../../constants';
+import { useElementWidth } from '../../hooks/useElementWidth';
+import { addWidget, moveWidget, removeWidget, resizeWidget, sizeOf, widgetId } from '../../store/layout';
+import type { HomeWidget, HomeWidgetType } from '../../types';
 
-interface Drag {
-  id: HomeWidgetId;
-  /** columna del bloque por la que se agarró, para que caiga donde se ve y no desde su borde izquierdo */
-  grab: number;
-}
+/** Tipo de dato con el que la paleta de bloques arrastra un bloque nuevo. */
+export const BLOCK_MIME = 'application/x-home-block';
+
+const btn = 'grid size-7 shrink-0 place-items-center rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface disabled:opacity-30';
 
 /**
- * Cuadrícula libre de 12 columnas: cada bloque guarda su columna y fila, y los huecos se respetan.
- * En edición se ven las celdas; un bloque se arrastra a cualquier celda (los que pise bajan) y
- * también se mueve y redimensiona con botones, para teclado.
+ * Cuadrícula de celdas cuadradas. Cada bloque ocupa de 1 a 3 columnas y de 1 a 3 filas, y se colocan en orden sin huecos.
+ * En edición se arrastra un bloque y los demás se reordenan mientras se mueve, igual que el tablero de tareas: el bloque
+ * completo va con el cursor y el nuevo orden se guarda al soltar. Los bloques de la paleta se sueltan en cualquier posición.
  */
-export function WidgetGrid({ layout, editing, render, onChange }: { layout: HomeWidget[]; editing: boolean; render: (id: HomeWidgetId) => ReactNode; onChange: (layout: HomeWidget[]) => void }) {
-  const [drag, setDrag] = useState<Drag | null>(null);
-  const [hover, setHover] = useState<{ col: number; row: number } | null>(null);
+export function WidgetGrid({
+  layout,
+  editing,
+  title,
+  render,
+  onChange,
+}: {
+  layout: HomeWidget[];
+  editing: boolean;
+  title: (w: HomeWidget) => string;
+  render: (w: HomeWidget) => ReactNode;
+  onChange: (layout: HomeWidget[]) => void;
+}) {
+  const grid = useRef<HTMLDivElement | null>(null);
+  const width = useElementWidth(grid, 960);
+  const cols = HOME_COLUMNS(width);
+  const cell = Math.floor((width - HOME_GAP * (cols - 1)) / cols); // celda cuadrada: el ancho de una columna
 
-  const rowsOf = (id: HomeWidgetId) => (HOME_WIDGETS[id].tall ? 2 : 1);
-  const lastRow = Math.max(1, ...layout.map((w) => w.row + rowsOf(w.id) - 1));
-  const rows = Math.min(MAX_ROWS, lastRow + (editing ? 2 : 0)); // en edición, filas libres debajo para soltar
+  // durante el arrastre se muestra el orden de `preview`; al soltar se guarda en la app
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<HomeWidget[] | null>(null);
+  const [paletteOver, setPaletteOver] = useState<number | null>(null); // posición donde caerá un bloque de la paleta
+  const shown = preview ?? layout;
+  const activeWidget = activeId ? shown.find((w) => w.id === activeId) : undefined;
 
-  const dragged = drag && layout.find((w) => w.id === drag.id);
-  const target = dragged && hover ? { col: Math.min(GRID_COLS - dragged.span + 1, Math.max(1, hover.col - drag.grab)), row: hover.row } : null;
-  const inTarget = (c: number, r: number) => !!(target && dragged && c >= target.col && c < target.col + dragged.span && r >= target.row && r < target.row + rowsOf(dragged.id));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  const end = () => {
-    setDrag(null);
-    setHover(null);
+  const onDragStart = (e: DragStartEvent) => {
+    setActiveId(String(e.active.id));
+    setPreview(layout);
   };
-  const btn = 'grid size-7 shrink-0 place-items-center rounded-md text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface disabled:opacity-30';
+  const onDragOver = (e: DragOverEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setPreview((prev) => {
+      const current = prev ?? layout;
+      const from = current.findIndex((w) => w.id === active.id);
+      const to = current.findIndex((w) => w.id === over.id);
+      return from < 0 || to < 0 || from === to ? prev : arrayMove(current, from, to);
+    });
+  };
+  const finish = () => {
+    setActiveId(null);
+    setPreview(null);
+  };
+  const onDragEnd = () => {
+    if (preview && preview.some((w, i) => w.id !== layout[i]?.id)) onChange(preview);
+    finish();
+  };
+
+  /** Bloque de la paleta soltado en `index` (nativo: la paleta no usa dnd-kit). */
+  const dropPalette = (e: DragEvent, index: number) => {
+    const raw = e.dataTransfer.getData(BLOCK_MIME);
+    if (!raw) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setPaletteOver(null);
+    try {
+      const { type, ref } = JSON.parse(raw) as { type: HomeWidgetType; ref?: string };
+      if (Object.hasOwn(HOME_WIDGETS, type)) onChange(moveWidget(addWidget(layout, type, ref), widgetId(type, ref), index));
+    } catch {
+      /* dato ajeno: se ignora */
+    }
+  };
+  const paletteHover = (e: DragEvent, index: number) => {
+    if (!editing || !e.dataTransfer.types.includes(BLOCK_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (paletteOver !== index) setPaletteOver(index);
+  };
 
   return (
-    <div className="grid grid-cols-1 items-start gap-space-md sm:grid-cols-12 sm:auto-rows-[minmax(5rem,auto)]">
-      {editing &&
-        Array.from({ length: rows * GRID_COLS }, (_, i) => {
-          const col = (i % GRID_COLS) + 1;
-          const row = Math.floor(i / GRID_COLS) + 1;
-          return (
-            <div
-              key={i}
-              aria-hidden="true"
-              className={`hidden self-stretch rounded-lg border border-dashed sm:block ${inTarget(col, row) ? 'border-primary bg-primary/15' : 'border-outline-variant/60 bg-primary/[0.03]'}`}
-              style={{ gridColumn: col, gridRow: row }}
-              onDragOver={(e) => {
-                if (!drag) return;
-                e.preventDefault();
-                if (hover?.col !== col || hover?.row !== row) setHover({ col, row });
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (drag && target) onChange(placeWidget(layout, drag.id, target));
-                end();
-              }}
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={finish}>
+      <SortableContext items={shown.map((w) => w.id)} strategy={rectSortingStrategy}>
+        <div
+          ref={grid}
+          className="grid items-stretch"
+          style={{ gap: HOME_GAP, gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridAutoRows: `${Math.max(cell, 1)}px`, gridAutoFlow: 'row dense' }}
+          onDragOver={(e) => paletteHover(e, shown.length)}
+          onDrop={(e) => dropPalette(e, shown.length)}
+        >
+          {shown.map((w, i) => (
+            <Tile
+              key={w.id}
+              w={w}
+              index={i}
+              cols={cols}
+              editing={editing}
+              label={title(w)}
+              dragging={activeId === w.id}
+              paletteOver={paletteOver === i}
+              onPaletteDragOver={(e) => paletteHover(e, i)}
+              onPaletteDrop={(e) => dropPalette(e, i)}
+              layout={layout}
+              onChange={onChange}
+              render={render}
             />
-          );
-        })}
-      {layout.map((w) => {
-        const meta = HOME_WIDGETS[w.id];
-        const move = (patch: Partial<HomeWidget>) => onChange(placeWidget(layout, w.id, patch));
-        return (
-          <div
-            key={w.id}
-            className={`relative z-10 sm:[grid-column:var(--c)] sm:[grid-row:var(--r)] ${editing ? 'rounded-xl outline-2 outline-offset-4 outline-dashed outline-outline-variant' : ''} ${drag ? 'pointer-events-none' : ''} ${drag?.id === w.id ? 'opacity-40' : ''}`}
-            style={{ '--c': `${w.col} / span ${w.span}`, '--r': `${w.row} / span ${rowsOf(w.id)}` } as CSSProperties}
-            draggable={editing}
-            onDragStart={(e) => {
-              const box = e.currentTarget.getBoundingClientRect();
-              const grab = Math.min(w.span - 1, Math.max(0, Math.floor(((e.clientX - box.left) / box.width) * w.span)));
-              e.dataTransfer.effectAllowed = 'move';
-              e.dataTransfer.setData('text/plain', w.id); // Firefox no arrastra sin datos
-              // después del dragstart: si los bloques dejan de recibir el puntero antes, el navegador cancela el arrastre
-              setTimeout(() => setDrag({ id: w.id, grab }));
-            }}
-            onDragEnd={end}
-          >
-            {editing && (
-              <div className="mb-1 flex cursor-grab items-center gap-0.5 rounded-lg bg-surface-container-high px-1.5 py-1 active:cursor-grabbing">
-                <GripVertical size={15} className="shrink-0 text-outline" aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate text-label-sm font-medium" title={meta.label}>
-                  {meta.label}
-                </span>
-                <button type="button" className={btn} onClick={() => move({ col: w.col - 1 })} disabled={w.col === 1} aria-label={`Mover ${meta.label} a la izquierda`} title="Izquierda">
-                  <ChevronLeft size={15} />
-                </button>
-                <button type="button" className={btn} onClick={() => move({ col: w.col + 1 })} disabled={w.col + w.span > GRID_COLS} aria-label={`Mover ${meta.label} a la derecha`} title="Derecha">
-                  <ChevronRight size={15} />
-                </button>
-                <button type="button" className={btn} onClick={() => move({ row: w.row - 1 })} disabled={w.row === 1} aria-label={`Subir ${meta.label}`} title="Arriba">
-                  <ChevronUp size={15} />
-                </button>
-                <button type="button" className={btn} onClick={() => move({ row: w.row + 1 })} disabled={w.row === MAX_ROWS} aria-label={`Bajar ${meta.label}`} title="Abajo">
-                  <ChevronDown size={15} />
-                </button>
-                <button type="button" className={btn} onClick={() => move({ span: w.span - 1 })} disabled={w.span === MIN_SPAN} aria-label={`Estrechar ${meta.label} (${w.span} de 12 columnas)`} title={`Más estrecho (${w.span}/12)`}>
-                  <Minus size={15} />
-                </button>
-                <button type="button" className={btn} onClick={() => move({ span: w.span + 1, col: Math.min(w.col, GRID_COLS - w.span) })} disabled={w.span === GRID_COLS} aria-label={`Ensanchar ${meta.label} (${w.span} de 12 columnas)`} title={`Más ancho (${w.span}/12)`}>
-                  <Plus size={15} />
-                </button>
-              </div>
-            )}
-            {/* en edición el contenido no recibe clics: así arrastrar no abre nada por error */}
-            <div className={editing ? 'pointer-events-none select-none' : ''}>{render(w.id)}</div>
+          ))}
+          {editing && (
+            <div
+              style={{ gridColumn: 'span 1' }}
+              className={`grid min-h-0 place-items-center rounded-xl border-2 border-dashed p-space-sm text-center text-outline ${paletteOver === shown.length ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant/60'}`}
+              onDragOver={(e) => paletteHover(e, shown.length)}
+              onDrop={(e) => dropPalette(e, shown.length)}
+            >
+              <span className="flex items-center gap-1 text-label-sm">
+                <Plus size={16} aria-hidden="true" />
+                Suelta aquí para poner al final
+              </span>
+            </div>
+          )}
+        </div>
+      </SortableContext>
+      <DragOverlay>
+        {activeWidget ? (
+          <div className="h-full w-full rounded-xl shadow-overlay ring-2 ring-primary/60">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl pointer-events-none select-none">{render(activeWidget)}</div>
           </div>
-        );
-      })}
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+/** Una celda de la cuadrícula: ordenable con dnd-kit en edición, con su barra de controles. */
+function Tile({
+  w,
+  index,
+  cols,
+  editing,
+  label,
+  dragging,
+  paletteOver,
+  onPaletteDragOver,
+  onPaletteDrop,
+  layout,
+  onChange,
+  render,
+}: {
+  w: HomeWidget;
+  index: number;
+  cols: number;
+  editing: boolean;
+  label: string;
+  dragging: boolean;
+  paletteOver: boolean;
+  onPaletteDragOver: (e: DragEvent) => void;
+  onPaletteDrop: (e: DragEvent) => void;
+  layout: HomeWidget[];
+  onChange: (layout: HomeWidget[]) => void;
+  render: (w: HomeWidget) => ReactNode;
+}) {
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: w.id, disabled: !editing });
+  const { w: cw, h: ch } = sizeOf(w);
+  const canGrow = (dim: 'w' | 'h') => (dim === 'w' ? cw < Math.min(WIDGET_SIZE.max, cols) : ch < WIDGET_SIZE.max);
+  const canShrink = (dim: 'w' | 'h') => (dim === 'w' ? cw > WIDGET_SIZE.min : ch > WIDGET_SIZE.min);
+  const style: CSSProperties = {
+    gridColumn: `span ${Math.min(cw, cols)}`,
+    gridRow: `span ${ch}`,
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...(editing ? attributes : {})}
+      {...(editing ? listeners : {})}
+      onDragOver={onPaletteDragOver}
+      onDrop={onPaletteDrop}
+      className={`relative flex min-h-0 min-w-0 flex-col rounded-xl ${editing ? `cursor-grab touch-none outline-2 outline-offset-4 outline-dashed ${paletteOver ? 'outline-primary' : 'outline-outline-variant'} active:cursor-grabbing` : ''} ${isDragging || dragging ? 'opacity-40' : ''}`}
+    >
+      {editing && (
+        <div className="mb-1 flex shrink-0 flex-wrap items-center gap-0.5 rounded-lg bg-surface-container-high px-1.5 py-1">
+          <GripVertical size={15} className="shrink-0 text-outline" aria-hidden="true" />
+          <span className="w-full min-w-0 truncate text-label-sm font-medium" title={label}>
+            {label}
+          </span>
+          <button type="button" className={btn} onClick={() => onChange(moveWidget(layout, w.id, index - 1))} disabled={index === 0} aria-label={`Mover ${label} antes`} title="Antes">
+            <ChevronLeft size={15} />
+          </button>
+          <button type="button" className={btn} onClick={() => onChange(moveWidget(layout, w.id, index + 1))} disabled={index === layout.length - 1} aria-label={`Mover ${label} después`} title="Después">
+            <ChevronRight size={15} />
+          </button>
+          <button type="button" className={btn} onClick={() => onChange(resizeWidget(layout, w.id, { w: cw - 1 }))} disabled={!canShrink('w')} aria-label={`Estrechar ${label} (${cw} de ${cols} columnas)`} title={`Estrechar (${cw} columnas)`}>
+            <Minimize2 size={15} className="rotate-90" />
+          </button>
+          <button type="button" className={btn} onClick={() => onChange(resizeWidget(layout, w.id, { w: cw + 1 }))} disabled={!canGrow('w')} aria-label={`Ensanchar ${label} (${cw} de ${cols} columnas)`} title={`Ensanchar (${cw} columnas)`}>
+            <Maximize2 size={15} className="rotate-90" />
+          </button>
+          <button type="button" className={btn} onClick={() => onChange(resizeWidget(layout, w.id, { h: ch - 1 }))} disabled={!canShrink('h')} aria-label={`Reducir la altura de ${label} (${ch} de 3)`} title={`Menos alto (${ch} filas)`}>
+            <Minimize2 size={15} />
+          </button>
+          <button type="button" className={btn} onClick={() => onChange(resizeWidget(layout, w.id, { h: ch + 1 }))} disabled={!canGrow('h')} aria-label={`Aumentar la altura de ${label} (${ch} de 3)`} title={`Más alto (${ch} filas)`}>
+            <Maximize2 size={15} />
+          </button>
+          <button type="button" className={btn} onClick={() => onChange(removeWidget(layout, w.id))} aria-label={`Quitar ${label}`} title="Quitar">
+            <X size={15} />
+          </button>
+        </div>
+      )}
+      {/* en edición el contenido no recibe clics: así arrastrar no abre nada por error. Los paneles de proyecto no tienen scroll. */}
+      <div className={`flex min-h-0 flex-1 flex-col rounded-xl [&>*]:min-h-0 [&>*]:flex-1 ${w.type === 'project' ? 'overflow-hidden' : 'scroll-contain overflow-y-auto'} ${editing ? 'pointer-events-none select-none' : ''}`}>
+        {render(w)}
+      </div>
     </div>
   );
 }

@@ -132,9 +132,14 @@
   transition: opacity 0.15s;
 }
 
-.crt-item button:hover::before,
 .crt-item button:focus-visible::before {
   opacity: 1;
+}
+
+@media (hover: hover) {
+.crt-item button:hover::before {
+  opacity: 1;
+}
 }
 
 .crt-item button:focus-visible {

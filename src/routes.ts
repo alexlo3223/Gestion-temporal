@@ -5,6 +5,8 @@ import type { AppState, UiState } from './types';
 export interface ViewProps {
   state: AppState;
   ui: UiState;
+  /** Resto del hash tras la ruta (`#projects/app/chat` → ['app', 'chat']). */
+  params?: string[];
 }
 
 export interface Route {

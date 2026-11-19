@@ -4,7 +4,8 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'node_modules/', 'release/'] },
+  // reui/ y shadcn/ son código de terceros copiado con la CLI de shadcn: se actualiza desde el registro, no se corrige aquí
+  { ignores: ['dist/', 'node_modules/', 'release/', 'src/components/reui/', 'src/components/shadcn/'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

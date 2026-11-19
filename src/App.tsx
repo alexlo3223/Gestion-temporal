@@ -1,21 +1,34 @@
 import { Suspense, useEffect, useRef } from 'react';
+import { PageSkeleton } from './components/ui/Skeleton';
 import { actions } from './actions';
 import { GlassDock } from './components/blocks/GlassDock';
 import { ToastStack } from './components/blocks/ToastStack';
 import { Drawer } from './components/layout/Drawer';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
-import { navigate, useHashRoute } from './hooks/useHashRoute';
+import { navigate, parseHash, useHashRoute } from './hooks/useHashRoute';
 import { useStore } from './hooks/useStore';
 import { ROUTES, resolveRoute, routesIn } from './routes';
 
 const DOCK_ITEMS = routesIn('main').map(([key, { title, Icon }]) => ({ key, label: title, Icon }));
+/** Orden de las páginas para saber hacia dónde se navega; una subruta (carpeta, sección…) cuenta como «más adentro». */
+const ORDER = Object.keys(ROUTES);
+const rankOf = (route: string, depth: number) => ORDER.indexOf(route) * 10 + Math.min(depth, 9);
 const EDITABLE = 'input, select, textarea, [contenteditable="true"]';
 
 export function App() {
-  const route = resolveRoute(useHashRoute());
+  const hash = useHashRoute();
+  const { route: rawRoute, params } = parseHash(hash);
+  const route = resolveRoute(rawRoute);
   const { state, ui } = useStore();
   const main = useRef<HTMLElement | null>(null);
+  /* la página entra deslizándose desde donde queda: hacia la derecha si va «después» en el menú o más adentro, y a la izquierda si no */
+  const rank = rankOf(route, params.length);
+  const previousRank = useRef(rank);
+  const direction = rank === previousRank.current ? 0 : rank > previousRank.current ? 1 : -1;
+  useEffect(() => {
+    previousRank.current = rank;
+  }, [rank]);
   const { title, View } = ROUTES[route];
 
   /* cierra el pomodoro cuando llega a cero, aunque no se esté viendo el tablero */
@@ -30,7 +43,7 @@ export function App() {
     actions.setMenu(false);
     window.scrollTo(0, 0);
     main.current?.focus({ preventScroll: true });
-  }, [title]);
+  }, [title, hash]);
 
   /* atajos: "/" busca, Escape cierra el menú móvil */
   useEffect(() => {
@@ -59,15 +72,17 @@ export function App() {
         >
           Saltar al contenido
         </a>
-        <Sidebar route={route} state={state} ui={ui} />
+        <Sidebar route={route} params={params} state={state} ui={ui} />
         {ui.menuOpen && <div className="fixed inset-0 z-[35] bg-black/60 lg:hidden" onClick={() => actions.setMenu(false)} aria-hidden="true" />}
 
         <div className="flex min-h-screen flex-col lg:pl-64">
           <Header title={title} state={state} ui={ui} />
           <main id="view" ref={main} tabIndex={-1} className="mx-auto w-full max-w-[1560px] flex-1 p-space-md pb-28 outline-none lg:p-space-lg">
-            <Suspense fallback={<p className="p-space-lg text-body-sm text-outline">Cargando…</p>}>
-              <View state={state} ui={ui} />
-            </Suspense>
+            <div key={hash} className="page-in" data-dir={direction || undefined}>
+              <Suspense fallback={<PageSkeleton />}>
+                <View state={state} ui={ui} params={params} />
+              </Suspense>
+            </div>
           </main>
         </div>
 

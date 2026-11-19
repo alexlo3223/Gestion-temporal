@@ -1,8 +1,8 @@
 // Consultas puras sobre el estado. No modifican nada.
-import { PRIORITIES, UNASSIGNED_PROJECT } from '../constants';
-import { daysBetween, isInRange, lastDaysRange, minutesToTime, offsetISO, timeToMinutes, todayISO, weekRange } from '../lib/dates';
+import { ME_ID, PRIORITIES, UNASSIGNED_PROJECT } from '../constants';
+import { daysBetween, isInRange, lastDaysRange, minutesToTime, offsetISO, parseISODate, timeToMinutes, todayISO, weekRange } from '../lib/dates';
 import { formatDate } from '../lib/format';
-import type { AppState, CalendarEvent, DateRange, FocusLog, Period, QuickFilter, Task, UiState } from '../types';
+import type { AppState, CalendarEvent, DateRange, DocKind, FocusLog, Member, Period, QuickFilter, Task, UiState } from '../types';
 
 export const findTask = (state: AppState, id: string | null | undefined) => state.tasks.find((t) => t.id === id);
 export const findEvent = (state: AppState, id: string | undefined) => state.events.find((e) => e.id === id);
@@ -148,3 +148,30 @@ export function weeklyFocus(state: AppState, weeks: number, now = new Date()) {
   });
 }
 
+
+// ---------- participantes, chat y documentos de una carpeta ----------
+
+/** Quien habla cuando el autor ya no participa en la carpeta. */
+const FORMER_MEMBER: Member = { id: '', name: 'Ex participante', color: '#71717a' };
+
+/** El usuario (siempre primero) y los participantes de la carpeta. */
+export const membersOf = (state: AppState, projectId: string): Member[] => [
+  { id: ME_ID, name: state.settings.name, color: '#a5b4fc' },
+  ...(findProject(state, projectId)?.members ?? []),
+];
+export const authorOf = (state: AppState, projectId: string, authorId: string): Member => membersOf(state, projectId).find((m) => m.id === authorId) ?? FORMER_MEMBER;
+export const messagesOf = (state: AppState, projectId: string) => state.messages.filter((m) => m.projectId === projectId).sort((a, b) => a.at - b.at);
+export const docsOf = (state: AppState, projectId: string, kind?: DocKind) => state.docs.filter((d) => d.projectId === projectId && (!kind || d.kind === kind)).sort((a, b) => b.updatedAt - a.updatedAt);
+
+/**
+ * Rango de una tarea para el gantt: termina el día de su fecha límite y empieza en `start`; sin él, dura lo que su
+ * estimación en jornadas (mín. 1 día). Sin fecha límite devuelve null.
+ */
+export function taskRange(state: AppState, task: Task): { start: string; end: string } | null {
+  if (!task.due) return null;
+  if (task.start) return { start: task.start, end: task.due };
+  if (!task.estimateMin) return { start: task.due, end: task.due }; // hito: sin estimación, es un día que se marca
+  const workday = Math.max(60, (state.settings.workEnd - state.settings.workStart) * 60);
+  const days = Math.max(1, task.estimateMin ? Math.ceil(task.estimateMin / workday) : 1);
+  return { start: offsetISO(1 - days, parseISODate(task.due)), end: task.due };
+}

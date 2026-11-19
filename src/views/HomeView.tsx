@@ -2,7 +2,6 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
-  FolderOpen,
   Gauge,
   ListTodo,
   Check,
@@ -19,18 +18,18 @@ import {
 } from 'lucide-react';
 import { Fragment, type ReactNode, useState } from 'react';
 import { actions } from '../actions';
-import { ColorDot, EmptyState, EventKindIcon, MetricCard } from '../components/ui/primitives';
-import { ProjectNode } from '../components/ui/ProjectNode';
+import { ColorDot, EmptyState, EventKindIcon, MetricCard, ProgressBar } from '../components/ui/primitives';
 import { TaskRow } from '../components/ui/TaskRow';
+import { BlockPalette } from '../components/ui/BlockPalette';
 import { WidgetGrid } from '../components/ui/WidgetGrid';
-import { EVENT_KINDS, TIMEZONES } from '../constants';
+import { EVENT_KINDS, HOME_WIDGETS, PRIORITIES, TIMEZONES } from '../constants';
 import { useMinute } from '../hooks/useNow';
 import { minutesOfDay, minutesToTime, timeToMinutes, todayISO, weekRange } from '../lib/dates';
-import { formatClock, formatDate, formatDuration, percentOf } from '../lib/format';
+import { formatClock, formatDate, formatDueLabel, formatDuration, percentOf } from '../lib/format';
 import type { ViewProps } from '../routes';
-import { resolveHomeLayout } from '../store/layout';
+import { resolveHomeLayout, sizeOf } from '../store/layout';
 import { compareByPriority, eventDuration, eventsOn, logsInRange, openTasks, projectOf, projectStats, sumDurations, sumMinutes } from '../store/selectors';
-import type { AppState, CalendarEvent, HomeWidgetId, Settings } from '../types';
+import type { AppState, CalendarEvent, HomeWidget, HomeWidgetType, Project, Settings, Task } from '../types';
 
 function greeting(hour: number) {
   if (hour < 13) return 'Buenos días';
@@ -200,11 +199,96 @@ function DayTimeline({ events, state, nowMinutes }: { events: CalendarEvent[]; s
   );
 }
 
+/** Los bloques ocultos por un destino que ya no existe conservan su sitio relativo: se añaden al final de lo que el usuario ordenó. */
+function mergeHidden(all: HomeWidget[], visible: HomeWidget[], next: HomeWidget[]) {
+  return [...next, ...all.filter((w) => !visible.includes(w))];
+}
+
+/**
+ * Panel individual de una carpeta: nombre, avance y, según su altura, sus próximas tareas. No tiene scroll: lo que no cabe
+ * se resume en «+N más» y se ve entero en su carpeta.
+ */
+function ProjectBlock({ project, state, today, h }: { project: Project; state: AppState; today: string; h: number }) {
+  const stats = projectStats(state, project.id);
+  const tasks = openTasks(state).filter((t) => t.projectId === project.id).sort(compareByPriority);
+  const room = Math.max(0, h * 2 - 1); // filas de tarea que caben según la altura del panel
+  const shown = tasks.slice(0, room);
+  return (
+    <section className="card flex h-full min-h-0 flex-col gap-space-sm overflow-hidden" aria-label={`Proyecto ${project.name}`}>
+      <a href={`#projects/${encodeURIComponent(project.id)}`} className="flex min-w-0 flex-col gap-1 rounded-lg hover:text-primary">
+        <span className="flex min-w-0 items-center gap-2 text-label-md font-semibold">
+          <ColorDot color={project.color} size={10} />
+          <span className="truncate">{project.name}</span>
+        </span>
+        {project.description && <span className="line-clamp-2 text-label-sm text-on-surface-variant">{project.description}</span>}
+      </a>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between text-label-sm text-on-surface-variant">
+          <span>
+            {stats.done} / {stats.total} tareas
+          </span>
+          <span className="font-mono" style={{ color: project.color }}>
+            {stats.percent}%
+          </span>
+        </div>
+        <ProgressBar percent={stats.percent} color={project.color} />
+        <span className="text-label-sm text-outline">{stats.nextDue ? `Próxima: ${formatDueLabel(stats.nextDue.due, today)}` : 'Sin fechas pendientes'}</span>
+      </div>
+      {room > 0 && (
+        <div className="flex min-h-0 flex-col gap-0.5 overflow-hidden">
+          {shown.length ? shown.map((t) => <TaskRow key={t.id} task={t} state={state} today={today} />) : <span className="text-label-sm text-outline">Sin tareas pendientes</span>}
+          {tasks.length > shown.length && <span className="px-space-sm text-label-sm text-outline">+{tasks.length - shown.length} más en la carpeta</span>}
+        </div>
+      )}
+      <span className="mt-auto text-label-sm text-outline">
+        {formatDuration(stats.minutes)} de foco · {tasks.length} abiertas
+      </span>
+    </section>
+  );
+}
+
+function TaskBlock({ task, state, today }: { task: Task; state: AppState; today: string }) {
+  const project = projectOf(state, task.projectId);
+  const percent = percentOf(task.spentMin, task.estimateMin);
+  return (
+    <section className="card flex flex-col gap-space-sm" aria-label={`Tarea ${task.title}`}>
+      <p className="flex items-center gap-2 text-label-sm" style={{ color: project.color }}>
+        <ColorDot color={project.color} size={10} />
+        {project.name}
+      </p>
+      <TaskRow task={task} state={state} today={today} />
+      {task.description && <p className="line-clamp-3 text-body-sm text-on-surface-variant">{task.description}</p>}
+      <div className="mt-auto flex flex-col gap-1.5">
+        <div className="flex items-center justify-between text-label-sm text-on-surface-variant">
+          <span>
+            {formatDuration(task.spentMin)} de {formatDuration(task.estimateMin)}
+          </span>
+          <span className="font-mono text-primary">{PRIORITIES[task.priority].label}</span>
+        </div>
+        <ProgressBar percent={percent} color={project.color} />
+        <div className="flex gap-space-sm pt-1">
+          {task.status !== 'done' && (
+            <button type="button" onClick={() => actions.startTimer(task.id)} className="btn btn-primary flex-1">
+              <Timer size={16} aria-hidden="true" />
+              Foco
+            </button>
+          )}
+          <button type="button" onClick={() => actions.openDrawer({ type: 'task', taskId: task.id })} className="btn btn-ghost" aria-label="Editar tarea" title="Editar tarea">
+            <Pencil size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function HomeView({ state }: ViewProps) {
   const now = useMinute();
   const { settings } = state;
   const [editing, setEditing] = useState(false);
-  const layout = resolveHomeLayout(settings.homeLayout);
+  const layout = resolveHomeLayout(settings.homeLayout, state.projects.map((p) => p.id));
+  // un bloque de proyecto o tarea cuyo destino ya no existe no se muestra (se queda guardado por si vuelve)
+  const visible = layout.filter((w) => !HOME_WIDGETS[w.type].ref || (w.type === 'project' ? state.projects.some((p) => p.id === w.ref) : state.tasks.some((t) => t.id === w.ref)));
   const today = todayISO(now);
   const nowMinutes = minutesOfDay(now);
   const events = eventsOn(state, today);
@@ -219,9 +303,19 @@ export function HomeView({ state }: ViewProps) {
   const pendingMeetings = meetings.filter((ev) => timeToMinutes(ev.start) > nowMinutes).length;
   const nextEvent = events.find((ev) => timeToMinutes(ev.end) > nowMinutes);
   const pending = openTasks(state).sort(compareByPriority);
-  const busiest = [...state.projects].sort((a, b) => projectStats(state, b.id).open - projectStats(state, a.id).open).slice(0, 3);
 
-  const widgets: Record<HomeWidgetId, ReactNode> = {
+  const titleOf = (w: HomeWidget) => {
+    if (w.type === 'project') return state.projects.find((p) => p.id === w.ref)?.name ?? HOME_WIDGETS.project.label;
+    if (w.type === 'task') return state.tasks.find((t) => t.id === w.ref)?.title ?? HOME_WIDGETS.task.label;
+    return HOME_WIDGETS[w.type].label;
+  };
+  const renderWidget = (w: HomeWidget) => {
+    if (w.type === 'project') return <ProjectBlock project={state.projects.find((p) => p.id === w.ref)!} state={state} today={today} h={sizeOf(w).h} />;
+    if (w.type === 'task') return <TaskBlock task={state.tasks.find((t) => t.id === w.ref)!} state={state} today={today} />;
+    return widgets[w.type];
+  };
+
+  const widgets: Record<Exclude<HomeWidgetType, 'project' | 'task'>, ReactNode> = {
     meetings: (
       <MetricCard
         label="Tiempo en reuniones"
@@ -285,24 +379,6 @@ export function HomeView({ state }: ViewProps) {
         </div>
       </section>
     ),
-    projects: (
-      <section className="flex flex-col gap-space-xs" aria-labelledby="home-projects-title">
-        <div className="flex items-center justify-between">
-          <h2 id="home-projects-title" className="flex items-center gap-space-xs text-headline-sm font-semibold">
-            <FolderOpen size={18} className="text-primary" aria-hidden="true" />
-            Proyectos en ejecución
-          </h2>
-          <a href="#projects" className="text-label-sm text-primary hover:underline">
-            Ver carpetas
-          </a>
-        </div>
-        <div className="grid grid-cols-1 gap-x-14 pr-12 md:grid-cols-3">
-          {busiest.map((p) => (
-            <ProjectNode key={p.id} project={p} state={state} today={today} />
-          ))}
-        </div>
-      </section>
-    ),
   };
 
   return (
@@ -347,11 +423,12 @@ export function HomeView({ state }: ViewProps) {
       </section>
       {editing && (
         <p className="-mt-space-sm text-body-sm text-outline">
-          Arrastra cada bloque a cualquier celda: los huecos que dejes se respetan y si cae encima de otro, ese baja. También puedes usar las flechas, y con − y + cambias cuántas columnas ocupa. Se guarda solo.
+          Cada bloque ocupa de 1 a 3 celdas cuadradas (ancho y alto). Arrástralo sobre otro para cambiarlo de sitio, usa las flechas, cambia su tamaño con los botones o quítalo con ✕. Los proyectos tienen cada uno su panel. Se guarda solo.
         </p>
       )}
 
-      <WidgetGrid layout={layout} editing={editing} onChange={actions.setHomeLayout} render={(id) => widgets[id]} />
+      {editing && <BlockPalette layout={layout} state={state} onChange={actions.setHomeLayout} />}
+      <WidgetGrid layout={visible} editing={editing} onChange={(next) => actions.setHomeLayout(mergeHidden(layout, visible, next))} title={titleOf} render={renderWidget} />
     </div>
   );
 }
