@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "start": "node server.cjs",
     "desktop": "npm run build && electron .",
-    "exe": "npm run build && electron-builder --win portable"
+    "installer": "npm run build && electron-builder --win nsis"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -52,10 +52,16 @@
       "output": "release"
     },
     "win": {
-      "target": "portable"
+      "target": "nsis"
     },
-    "portable": {
-      "artifactName": "GestorTiempo.exe"
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gestor tiempo",
+      "artifactName": "GestorTiempo-Setup-${version}.exe"
     }
   },
   "repository": {

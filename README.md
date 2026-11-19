@@ -3,7 +3,7 @@
 Aplicación para gestionar el tiempo personal: tareas en tablero, calendario, carpetas de proyectos, temporizador
 pomodoro que registra horas y analíticas de productividad. Modo oscuro, en español.
 
-Funciona en el navegador, como web con datos en la nube o como app de escritorio para Windows (`.exe`).
+Funciona en el navegador, como web con datos en la nube o como app de escritorio para Windows (con instalador).
 
 **Stack:** React 19 · TypeScript · Vite · Tailwind CSS v4 · framer-motion · lucide-react · Electron · Vitest · ESLint
 
@@ -33,7 +33,7 @@ npm run dev        # http://localhost:5173
 | `npm run build`     | Comprueba tipos y compila la web en `dist/`                     |
 | `npm start`         | Sirve `dist/` con la API de datos (`server.cjs`) en el puerto 3000 |
 | `npm run desktop`   | Abre la app de escritorio sin empaquetar                        |
-| `npm run exe`       | Genera `release/GestorTiempo.exe` (Windows, portable)           |
+| `npm run installer` | Genera el instalador `release/GestorTiempo-Setup-<versión>.exe` |
 | `npm test`          | Tests (Vitest)                                                  |
 | `npm run lint`      | ESLint                                                          |
 | `npm run typecheck` | TypeScript                                                      |
@@ -64,10 +64,12 @@ Si dos dispositivos editan a la vez, gana el último que guarda.
 
 **Solo estático** (Netlify, GitHub Pages…): sube `dist/`. Funciona, pero cada navegador guarda sus propios datos.
 
-**Escritorio (Windows).** `npm run exe` crea `release/GestorTiempo.exe`, que no necesita instalación. Arranca el
-servidor por dentro y guarda en `%APPDATA%\gestor-tiempo\gestor-datos.json`. Para que use la web en la nube, crea en
-esa carpeta un `config.json` con `{"url": "https://tu-web"}`. El `.exe` no está firmado, así que Windows puede avisar
-al abrirlo.
+**Escritorio (Windows).** `npm run installer` crea `release/GestorTiempo-Setup-<versión>.exe`: un asistente que deja
+elegir la carpeta, crea accesos directos en el escritorio y el menú Inicio, y añade un desinstalador en *Aplicaciones
+instaladas*. No pide permisos de administrador (se instala para el usuario actual). La app arranca el servidor por
+dentro y guarda en `%APPDATA%\gestor-tiempo\gestor-datos.json`; desinstalarla no borra esos datos. Para que use la web
+en la nube, crea en esa carpeta un `config.json` con `{"url": "https://tu-web"}`. El instalador no está firmado, así
+que Windows SmartScreen puede avisar al abrirlo («Más información» → «Ejecutar de todas formas»).
 
 ## Estructura
 

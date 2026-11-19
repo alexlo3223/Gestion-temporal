@@ -13,7 +13,7 @@ export const RELEASES: Release[] = [
         'Inicio personalizable: cuadrícula de 12 columnas donde cada bloque se arrastra y se redimensiona, respetando los huecos',
         'Las carpetas se abren en su sitio para ver sus tareas y su cronograma',
         'Sincronización con la nube a través de la API del servidor (/api/state), con contraseña opcional',
-        'App de escritorio para Windows (.exe portable con Electron)',
+        'App de escritorio para Windows con instalador (Electron)',
       ],
       Mejorado: ['Iconos en lugar de emojis en los tipos de evento', 'La leyenda de Analíticas explica las barras bajo la línea (tareas completadas)'],
     },
