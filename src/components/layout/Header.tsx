@@ -59,7 +59,7 @@ export function Header({ title, state, ui }: { title: string; state: AppState; u
         >
           <Menu size={22} aria-hidden="true" />
         </button>
-        <Timer size={20} className="text-primary" aria-hidden="true" />
+        <img src="/favicon.svg" alt="" width={22} height={22} className="shrink-0 rounded-md" />
         <span className="truncate text-label-md text-on-surface-variant">{title}</span>
       </div>
       <div className="flex items-center gap-space-sm">

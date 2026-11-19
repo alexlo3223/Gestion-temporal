@@ -77,7 +77,8 @@ que Windows SmartScreen puede avisar al abrirlo («Más información» → «Eje
 index.html              Página de entrada de Vite
 server.cjs              Servidor sin dependencias: sirve dist/ y la API /api/state
 electron/main.cjs       App de escritorio: arranca server.cjs y lo muestra en una ventana
-public/                 Archivos estáticos (favicon)
+public/                 Archivos estáticos (favicon.svg = logo)
+build/                  Icono de la app de escritorio (icon.svg → icon.png de 512 px)
 src/
   main.tsx              Punto de entrada
   App.tsx               Layout: menú, cabecera, vista actual, panel de formularios, avisos, dock móvil
