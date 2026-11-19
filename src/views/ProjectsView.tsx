@@ -1,17 +1,48 @@
-import { FolderPlus, Plus } from 'lucide-react';
+import { ArrowLeft, FolderPlus, Plus } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { actions } from '../actions';
+import { PROJECT_SECTIONS } from '../constants';
+import { navigate } from '../hooks/useHashRoute';
 import { PageHeader } from '../components/ui/primitives';
+import { ProjectDashboard } from '../components/ui/ProjectDashboard';
 import { ProjectNode } from '../components/ui/ProjectNode';
-import { ProjectTimeline } from '../components/ui/ProjectTimeline';
-import { TaskRow } from '../components/ui/TaskRow';
-import { compareByPriority } from '../store/selectors';
 import { todayISO } from '../lib/dates';
 import type { ViewProps } from '../routes';
+import type { ProjectSection } from '../types';
 
-export function ProjectsView({ state }: ViewProps) {
+const isSection = (value: string | undefined): value is ProjectSection => value !== undefined && Object.hasOwn(PROJECT_SECTIONS, value);
+
+export function ProjectsView({ state, params = [] }: ViewProps) {
   const today = todayISO();
   const [open, setOpen] = useState<string | null>(null);
+  const [id, sectionParam, docId] = params;
+  const project = state.projects.find((p) => p.id === id);
+
+  /* #projects/<carpeta>[/<sección>[/<documento>]]: el panel de una carpeta, al que se llega desde el menú lateral */
+  if (project) {
+    const section = isSection(sectionParam) ? sectionParam : 'resumen';
+    return (
+      <div className="flex flex-col gap-space-md">
+        <a href="#projects" className="inline-flex items-center gap-1 self-start text-label-md text-outline hover:text-on-surface">
+          <ArrowLeft size={14} aria-hidden="true" />
+          Todas las carpetas
+        </a>
+        <h1 className="sr-only">
+          {project.name} · {PROJECT_SECTIONS[section]}
+        </h1>
+        <ProjectDashboard
+          key={`${project.id}-${section}`}
+          state={state}
+          project={project}
+          section={section}
+          today={today}
+          docId={docId}
+          onDoc={(next) => navigate(`projects/${encodeURIComponent(project.id)}/${section}${next ? `/${encodeURIComponent(next)}` : ''}`)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-space-xs">
       <PageHeader
@@ -24,35 +55,27 @@ export function ProjectsView({ state }: ViewProps) {
           </button>
         }
       />
-      <p className="text-body-sm text-outline">Pulsa el nombre para ir a sus tareas, o «Abrir carpeta» para ver su contenido aquí. Pasa el ratón por encima para las acciones rápidas.</p>
+      <p className="text-body-sm text-outline">Pulsa el nombre para ir a sus tareas, o «Abrir carpeta» para ver su panel aquí: tareas, gantt, chat, documentos y notas. Las carpetas también están en el menú lateral, dentro de Proyectos.</p>
       {/* margen a la derecha: el abanico de acciones sale por la esquina superior derecha */}
-      <div className="grid grid-flow-row-dense grid-cols-1 gap-x-14 pr-12 md:grid-cols-2 xl:grid-cols-3">
-        {state.projects.map((p) => {
-          const tasks = state.tasks.filter((t) => t.projectId === p.id).sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done') || compareByPriority(a, b));
-          return (
-            <Fragment key={p.id}>
+      <div className="grid grid-flow-row-dense grid-cols-1 gap-x-4 gap-y-3 pr-12 md:grid-cols-2 xl:grid-cols-3">
+        {state.projects.map((p) => (
+          <Fragment key={p.id}>
+            <div className="-my-[52px]">
               <ProjectNode project={p} state={state} today={today} expanded={open === p.id} onToggle={() => setOpen(open === p.id ? null : p.id)} />
-              {open === p.id && (
-                // contenido de la carpeta a lo ancho, justo debajo de su fila
-                <div className="col-span-full flex flex-col gap-space-md pb-space-lg">
-                  <section className="card flex flex-col gap-0.5" aria-label={`Tareas de ${p.name}`}>
-                    {tasks.length ? (
-                      tasks.map((t) => <TaskRow key={t.id} task={t} state={state} today={today} />)
-                    ) : (
-                      <p className="p-space-md text-center text-body-sm text-outline">Esta carpeta aún no tiene tareas.</p>
-                    )}
-                  </section>
-                  <ProjectTimeline state={state} now={new Date()} projectId={p.id} />
-                </div>
-              )}
-            </Fragment>
-          );
-        })}
-        <div className="py-[52px]">
+            </div>
+            {open === p.id && (
+              // el panel de la carpeta a lo ancho, justo debajo de su fila
+              <div className="col-span-full pb-space-lg">
+                <ProjectDashboard state={state} project={p} today={today} />
+              </div>
+            )}
+          </Fragment>
+        ))}
+        <div className="flex">
           <button
             type="button"
             onClick={() => actions.openDrawer({ type: 'project' })}
-            className="flex h-full min-h-40 w-full flex-col items-center justify-center gap-1 rounded-[20px] border border-dashed border-outline-variant text-outline transition-colors hover:border-outline hover:text-on-surface"
+            className="flex h-full min-h-24 w-full flex-col items-center justify-center gap-1 rounded-[20px] border border-dashed border-outline-variant text-outline transition-colors hover:border-outline hover:text-on-surface"
           >
             <Plus size={22} aria-hidden="true" />
             <span className="text-label-md">Nueva carpeta</span>

@@ -1,9 +1,13 @@
 import { Coffee, MessageSquare, Sprout, Target, type LucideIcon } from 'lucide-react';
-import type { EventKind, HomeWidgetId, Priority, Project, UiState } from './types';
+import type { EventKind, HomeWidgetType, Priority, Project, ProjectSection, UiState } from './types';
 
 export const STORAGE_KEY = 'gestor-tiempo';
 /** Subir cuando cambie la forma de los datos guardados; los datos antiguos se descartan. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 5;
+/** Id del propio usuario como autor de mensajes y documentos. */
+export const ME_ID = 'me';
+
+export const PROJECT_SECTIONS: Record<ProjectSection, string> = { resumen: 'Resumen', tareas: 'Tareas', gantt: 'Gantt', chat: 'Chat', documentos: 'Documentos', notas: 'Notas' };
 
 export const TASK_STATUSES = ['todo', 'doing', 'done'] as const;
 
@@ -41,7 +45,7 @@ export const TIMEZONES: Record<string, string> = {
   UTC: 'UTC',
 };
 
-export const UNASSIGNED_PROJECT: Project = Object.freeze({ id: '', name: 'Sin carpeta', color: '#71717a', description: '' });
+export const UNASSIGNED_PROJECT: Project = Object.freeze({ id: '', name: 'Sin carpeta', color: '#71717a', description: '', members: [], phases: [] });
 
 export const CALENDAR = Object.freeze({ firstHour: 7, lastHour: 21, hourHeightPx: 56 });
 
@@ -50,25 +54,29 @@ export const DEFAULT_UI: UiState = Object.freeze({
   priority: 'all',
   query: '',
   quick: [],
-  calendarView: 'week',
-  calendarOffset: 0,
   period: 'week',
   drawer: null,
   fieldError: null,
   menuOpen: false,
 }) as UiState;
 
-/** Bloques de Inicio y su sitio de serie en la cuadrícula de 12 columnas. `tall`: ocupa dos filas. */
-export const HOME_WIDGETS: Record<HomeWidgetId, { label: string; span: number; col: number; row: number; tall?: boolean }> = {
-  meetings: { label: 'Tiempo en reuniones', span: 3, col: 1, row: 1 },
-  focusToday: { label: 'Foco registrado hoy', span: 3, col: 4, row: 1 },
-  tasksToday: { label: 'Tareas de hoy', span: 3, col: 7, row: 1 },
-  focusWeek: { label: 'Foco esta semana', span: 3, col: 10, row: 1 },
-  spotlight: { label: 'Siguiente evento', span: 5, col: 1, row: 2 },
-  timeline: { label: 'Agenda del día', span: 7, col: 6, row: 2, tall: true },
-  priorities: { label: 'Prioridades', span: 5, col: 1, row: 3 },
-  projects: { label: 'Proyectos en ejecución', span: 12, col: 1, row: 4 },
+/** Tipos de bloque de Inicio, en el orden de serie. `ref`: el bloque apunta a un proyecto o a una tarea. */
+/** Tamaño por defecto de cada bloque, en celdas (`w` columnas × `h` filas). Cada bloque admite de 1 a 3 en cada medida. */
+export const HOME_WIDGETS: Record<HomeWidgetType, { label: string; ref?: 'project' | 'task'; w: number; h: number }> = {
+  meetings: { label: 'Tiempo en reuniones', w: 1, h: 1 },
+  focusToday: { label: 'Foco registrado hoy', w: 1, h: 1 },
+  tasksToday: { label: 'Tareas de hoy', w: 1, h: 1 },
+  focusWeek: { label: 'Foco esta semana', w: 1, h: 1 },
+  spotlight: { label: 'Siguiente evento', w: 2, h: 1 },
+  timeline: { label: 'Agenda del día', w: 2, h: 2 },
+  priorities: { label: 'Prioridades', w: 2, h: 2 },
+  project: { label: 'Proyecto concreto', ref: 'project', w: 1, h: 1 },
+  task: { label: 'Tarea concreta', ref: 'task', w: 1, h: 2 },
 };
-export const GRID_COLS = 12;
-export const MIN_SPAN = 2;
-export const MAX_ROWS = 40;
+export const MAX_WIDGETS = 40;
+/** Tamaño mínimo y máximo de un bloque en celdas. */
+export const WIDGET_SIZE = { min: 1, max: 3 };
+/** Columnas de la cuadrícula de Inicio según el ancho disponible (en píxeles). */
+export const HOME_COLUMNS = (width: number) => (width >= 1200 ? 6 : width >= 900 ? 4 : width >= 560 ? 3 : width >= 380 ? 2 : 1);
+/** Separación entre celdas, en píxeles (coincide con `gap-space-md`). */
+export const HOME_GAP = 16;

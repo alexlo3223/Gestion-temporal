@@ -2,18 +2,54 @@ export type Priority = 'urgente' | 'alta' | 'normal' | 'baja';
 export type TaskStatus = 'todo' | 'doing' | 'done';
 export type EventKind = 'reunion' | 'foco' | 'pausa' | 'personal';
 export type Period = 'week' | 'month';
-/** Vista del calendario: semana, mes o un día con una columna por carpeta. */
-export type CalendarMode = 'week' | 'month' | 'projects';
 /** Filtros rápidos del tablero, combinables entre sí (se suman). */
 export type QuickFilter = 'today' | 'late' | 'nodate';
 /** Rango de fechas ISO [desde, hasta], ambos incluidos. */
 export type DateRange = [string, string];
+
+/** Participante de una carpeta. El usuario no se guarda aquí: es siempre `ME_ID` (con el nombre de los ajustes). */
+export interface Member {
+  id: string;
+  name: string;
+  color: string;
+}
+
+/** Fase de una carpeta (p. ej. Diseño, Desarrollo). Las tareas se agrupan por ella en el cascader y en el gantt. */
+export interface Phase {
+  id: string;
+  name: string;
+}
 
 export interface Project {
   id: string;
   name: string;
   color: string;
   description: string;
+  members: Member[];
+  phases: Phase[];
+}
+
+export interface ChatMessage {
+  id: string;
+  projectId: string;
+  authorId: string;
+  text: string;
+  /** Marca de tiempo (ms). */
+  at: number;
+}
+
+export type DocKind = 'nota' | 'documento';
+
+/** Nota o documento compartido de una carpeta. */
+export interface ProjectDoc {
+  id: string;
+  projectId: string;
+  kind: DocKind;
+  title: string;
+  body: string;
+  /** Marca de tiempo (ms) de la última edición. */
+  updatedAt: number;
+  authorId: string;
 }
 
 export interface Task {
@@ -21,10 +57,16 @@ export interface Task {
   title: string;
   description: string;
   projectId: string;
+  /** Fase de su carpeta, o '' si no tiene. */
+  phaseId: string;
   priority: Priority;
   status: TaskStatus;
   estimateMin: number;
   spentMin: number;
+  /** Fecha de inicio ISO, o '' para derivarla de la fecha límite y la estimación. */
+  start: string;
+  /** Tareas que deben acabar antes (dependencias finish-to-start, se dibujan como flechas en el gantt). */
+  dependsOn: string[];
   /** Fecha límite ISO, o '' si no tiene. */
   due: string;
   /** Fecha ISO en que se completó, o '' si no está completada. */
@@ -60,14 +102,21 @@ export interface Timer {
   accumulatedMs: number;
 }
 
-export type HomeWidgetId = 'meetings' | 'focusToday' | 'tasksToday' | 'focusWeek' | 'spotlight' | 'priorities' | 'timeline' | 'projects';
-/** Un bloque de Inicio: columna y fila donde empieza (desde 1) y cuántas columnas ocupa (de 12). */
+export type HomeWidgetType = 'meetings' | 'focusToday' | 'tasksToday' | 'focusWeek' | 'spotlight' | 'priorities' | 'timeline' | 'project' | 'task';
+/**
+ * Un bloque de Inicio, medido en celdas cuadradas de la cuadrícula: `w` columnas y `h` filas, de 1 a 3.
+ * `project` y `task` apuntan a un proyecto o tarea concretos mediante `ref`. `id` es único: el tipo en los fijos y `tipo:ref` en los de referencia.
+ */
 export interface HomeWidget {
-  id: HomeWidgetId;
-  span: number;
-  col: number;
-  row: number;
+  id: string;
+  type: HomeWidgetType;
+  ref?: string;
+  w?: number;
+  h?: number;
 }
+
+/** Secciones de una carpeta de proyecto: cada una cuelga del menú lateral (`#projects/<id>/<sección>`). */
+export type ProjectSection = 'resumen' | 'tareas' | 'gantt' | 'chat' | 'documentos' | 'notas';
 
 export interface Settings {
   name: string;
@@ -88,6 +137,8 @@ export interface AppState {
   tasks: Task[];
   events: CalendarEvent[];
   logs: FocusLog[];
+  messages: ChatMessage[];
+  docs: ProjectDoc[];
   timer: Timer;
 }
 
@@ -98,7 +149,7 @@ export interface MutationContext {
 }
 
 /** Datos crudos de un formulario (FormData → objeto). Se validan en store/mutations. */
-export type FormInput = Record<string, FormDataEntryValue | undefined>;
+export type FormInput = Record<string, FormDataEntryValue | FormDataEntryValue[] | undefined>;
 
 export type DrawerState =
   | { type: 'task'; taskId?: string; defaults?: { projectId?: string; due?: string } }
@@ -113,9 +164,6 @@ export interface UiState {
   priority: Priority | 'all';
   query: string;
   quick: QuickFilter[];
-  calendarView: CalendarMode;
-  /** Desplazamiento del calendario en unidades de la vista (semanas, meses o días). */
-  calendarOffset: number;
   period: Period;
   drawer: DrawerState;
   /** Último error de validación de un campo concreto del formulario abierto. */

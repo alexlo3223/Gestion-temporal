@@ -129,9 +129,16 @@
     color 0.15s;
 }
 
-.nod-act:hover,
 .nod-act:focus-visible {
   --nod-hov: 1.1;
   background: var(--color-primary);
   color: var(--color-on-primary);
+}
+
+@media (hover: hover) {
+.nod-act:hover {
+  --nod-hov: 1.1;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
 }

@@ -120,7 +120,7 @@ export function SlotPicker({
               </select>
             </label>
           </div>
-          <div className="grid max-h-48 grid-cols-4 gap-1 overflow-y-auto pr-0.5" role="group" aria-label="Hora de inicio">
+          <div className="grid max-h-48 grid-cols-4 gap-1 scroll-contain overflow-y-auto pr-0.5" role="group" aria-label="Hora de inicio">
             {slots.map((s) => (
               <button
                 key={s.time}

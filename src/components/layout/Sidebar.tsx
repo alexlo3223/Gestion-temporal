@@ -1,25 +1,29 @@
-import { ChevronRight, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { actions } from '../../actions';
 import { navigate } from '../../hooks/useHashRoute';
 import { routesIn } from '../../routes';
-import { compareByPriority, openTasks } from '../../store/selectors';
 import type { AppState, UiState } from '../../types';
-import { ColorDot } from '../ui/primitives';
-import { openProjectTasks } from '../ui/ProjectNode';
+import { ProjectsNav } from './ProjectsNav';
 
-export function Sidebar({ route, state, ui }: { route: string; state: AppState; ui: UiState }) {
+export function Sidebar({ route, params = [], state, ui }: { route: string; params?: string[]; state: AppState; ui: UiState }) {
   const { name } = state.settings;
-  /* carpetas desplegadas: es solo de esta vista, no se guarda */
-  const [expanded, setExpanded] = useState<string[]>([]);
-  const link = ([key, { title, Icon }]: ReturnType<typeof routesIn>[number]) => (
+  /* la búsqueda filtra el tablero 250 ms después de dejar de teclear, no con cada letra */
+  const [query, setQuery] = useState(ui.query);
+  const searchTimer = useRef<number | undefined>(undefined);
+  useEffect(() => setQuery(ui.query), [ui.query]); // p. ej. al quitar la búsqueda desde el tablero
+  useEffect(() => () => window.clearTimeout(searchTimer.current), []);
+  const link = ([key, { title, Icon }]: ReturnType<typeof routesIn>[number]) =>
+    key === 'projects' ? (
+      <ProjectsNav key={key} state={state} route={route} params={params} />
+    ) : (
     <li key={key}>
       <a href={`#${key}`} className={`nav-link ${route === key ? 'active' : ''}`} aria-current={route === key ? 'page' : undefined}>
         <Icon size={18} aria-hidden="true" />
         {title}
       </a>
     </li>
-  );
+    );
 
   return (
     <aside
@@ -27,7 +31,7 @@ export function Sidebar({ route, state, ui }: { route: string; state: AppState; 
       aria-label="Navegación principal"
       className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col justify-between bg-surface-container-lowest transition-transform lg:translate-x-0 ${ui.menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col scroll-contain overflow-y-auto">
         <div className="flex items-center gap-space-sm p-space-md">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-container font-semibold text-white" aria-hidden="true">
             {name.charAt(0).toUpperCase()}
@@ -45,11 +49,15 @@ export function Sidebar({ route, state, ui }: { route: string; state: AppState; 
             <input
               id="search"
               type="search"
-              value={ui.query}
+              value={query}
               onChange={(e) => {
-                actions.search(e.target.value);
+                const value = e.target.value;
+                setQuery(value);
+                window.clearTimeout(searchTimer.current);
+                searchTimer.current = window.setTimeout(() => actions.search(value), 250);
                 if (route !== 'tasks') navigate('tasks');
               }}
+              enterKeyHint="search"
               placeholder="Buscar tareas…"
               autoComplete="off"
               className="w-full bg-transparent text-body-sm text-on-surface outline-none placeholder:text-outline"
@@ -64,66 +72,6 @@ export function Sidebar({ route, state, ui }: { route: string; state: AppState; 
           </h2>
           <ul className="mt-space-xs flex flex-col gap-0.5">{routesIn('main').map(link)}</ul>
         </nav>
-
-        <section className="px-space-md pt-space-lg" aria-labelledby="nav-projects">
-          <div className="flex items-center justify-between px-space-sm">
-            <h2 id="nav-projects" className="caps">
-              Carpetas
-            </h2>
-            <button type="button" onClick={() => actions.openDrawer({ type: 'project' })} className="icon-btn p-0.5" aria-label="Nueva carpeta">
-              <Plus size={16} aria-hidden="true" />
-            </button>
-          </div>
-          <ul className="mt-space-xs flex flex-col gap-0.5">
-            {state.projects.map((p) => {
-              const active = route === 'tasks' && ui.projects.length === 1 && ui.projects[0] === p.id;
-              const tasks = openTasks(state)
-                .filter((t) => t.projectId === p.id)
-                .sort(compareByPriority);
-              const isExpanded = expanded.includes(p.id);
-              return (
-                <li key={p.id}>
-                  <div className="flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => setExpanded((ids) => (isExpanded ? ids.filter((id) => id !== p.id) : [...ids, p.id]))}
-                      disabled={tasks.length === 0}
-                      className="icon-btn p-0.5 disabled:invisible"
-                      aria-expanded={isExpanded}
-                      aria-controls={`tree-${p.id}`}
-                      aria-label={`${isExpanded ? 'Ocultar' : 'Mostrar'} tareas de ${p.name}`}
-                    >
-                      <ChevronRight size={14} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
-                    </button>
-                    <button type="button" onClick={() => openProjectTasks(p.id)} className={`nav-link min-w-0 flex-1 ${active ? 'active' : ''}`} aria-current={active || undefined}>
-                      <ColorDot color={p.color} />
-                      <span className="truncate">{p.name}</span>
-                      <span className="ml-auto font-mono text-[10px] text-outline" aria-label={`${tasks.length} tareas abiertas`}>
-                        {tasks.length}
-                      </span>
-                    </button>
-                  </div>
-                  {isExpanded && (
-                    <ul id={`tree-${p.id}`} className="ml-[11px] flex flex-col border-l border-surface-container-high pl-space-sm">
-                      {tasks.map((t) => (
-                        <li key={t.id}>
-                          <button
-                            type="button"
-                            onClick={() => actions.openDrawer({ type: 'task', taskId: t.id })}
-                            className="w-full truncate rounded-md px-space-sm py-1 text-left text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                            title={t.title}
-                          >
-                            {t.title}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
       </div>
 
       <nav className="flex flex-col gap-0.5 p-space-md" aria-label="Configuración">

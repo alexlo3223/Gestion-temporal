@@ -11,7 +11,13 @@ export const errorFor = (fieldError: FieldError, name: string) => (fieldError?.f
 /** Convierte el envío de un <form> en un objeto plano para las mutaciones. */
 export const handleSubmit = (save: (input: FormInput) => void) => (event: FormEvent<HTMLFormElement>) => {
   event.preventDefault();
-  save(Object.fromEntries(new FormData(event.currentTarget)));
+  // un nombre repetido (casillas marcadas, p. ej. dependencias) llega como lista
+  const data: FormInput = {};
+  new FormData(event.currentTarget).forEach((value, key) => {
+    const previous = data[key];
+    data[key] = previous === undefined ? value : Array.isArray(previous) ? [...previous, value] : [previous, value];
+  });
+  save(data);
 };
 
 export function DrawerTitle({ Icon, children }: { Icon: LucideIcon; children: ReactNode }) {
@@ -23,15 +29,24 @@ export function DrawerTitle({ Icon, children }: { Icon: LucideIcon; children: Re
   );
 }
 
-/** Selector nativo con el mismo contorno que LabelInput y la etiqueta encima. */
+/** Etiqueta sobre el borde de una caja de 52 px, igual que LabelInput: todos los campos de un formulario quedan a la misma altura. */
+export function BoxLabel({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <span id={id} className="pointer-events-none absolute -top-2 left-3.5 z-10 bg-surface-container-low px-1 text-label-sm text-outline">
+      {children}
+    </span>
+  );
+}
+
+/** Selector nativo con el mismo contorno y la misma etiqueta sobre el borde que LabelInput. */
 export function SelectField({ label, name, defaultValue, children }: { label: string; name: string; defaultValue?: string; children: ReactNode }) {
   const id = useId();
   return (
-    <div>
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      <select id={id} name={name} defaultValue={defaultValue} className="input cursor-pointer">
+    <div className="relative">
+      <BoxLabel>
+        <label htmlFor={id}>{label}</label>
+      </BoxLabel>
+      <select id={id} name={name} defaultValue={defaultValue} className="input !h-[52px] cursor-pointer">
         {children}
       </select>
     </div>

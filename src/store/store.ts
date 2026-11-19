@@ -3,9 +3,10 @@
 import { DEFAULT_UI, SCHEMA_VERSION, STORAGE_KEY } from '../constants';
 import { createId } from '../lib/id';
 import type { AppState, UiState } from '../types';
+import { migrateState } from './migrate';
 import { createSampleData } from './sample';
 
-const COLLECTIONS = ['projects', 'tasks', 'events', 'logs'] as const;
+const COLLECTIONS = ['projects', 'tasks', 'events', 'logs', 'messages', 'docs'] as const;
 
 function isValidState(value: unknown): value is AppState {
   if (value === null || typeof value !== 'object') return false;
@@ -21,7 +22,7 @@ function isValidState(value: unknown): value is AppState {
 function readStorage(): unknown {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return raw ? migrateState(JSON.parse(raw)) : null;
   } catch {
     return null; // almacenamiento bloqueado, JSON corrupto o entorno sin localStorage: se empieza de cero
   }
@@ -32,12 +33,18 @@ function readStorage(): unknown {
 const API = '/api/state';
 let remoteReady = false; // no se sube nada hasta haber leído la nube, para no pisarla con datos locales
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
+let lastSynced = ''; // lo último que la nube tiene (leído o subido): no se vuelve a subir lo mismo
 function pushRemote(state: AppState) {
   if (!remoteReady) return;
-  clearTimeout(pushTimer);
+  clearTimeout(pushTimer); // varios cambios seguidos se juntan en una sola subida
   pushTimer = setTimeout(() => {
-    fetch(API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state), keepalive: true })
-      .then((res) => { if (!res.ok) console.warn('La nube rechazó el guardado:', res.status); })
+    const body = JSON.stringify(state);
+    if (body === lastSynced) return;
+    fetch(API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+      .then((res) => {
+        if (res.ok) lastSynced = body;
+        else console.warn('La nube rechazó el guardado:', res.status);
+      })
       .catch((error) => console.warn('No se pudo guardar en la nube; queda en este navegador.', error));
   }, 400);
 }
@@ -106,23 +113,32 @@ export const store = {
   },
 
   /** Carga los datos de la nube si hay API; si no la hay (hosting estático) sigue solo con localStorage. */
-  async loadRemote() {
-    try {
-      const res = await fetch(API, { cache: 'no-store' });
-      if (res.status === 404 && res.headers.get('x-gestor-api')) {
-        remoteReady = true; // nube vacía: se sube lo local
-        pushRemote(snapshot.state);
-        return;
-      }
-      if (!res.ok) return;
-      const remote: unknown = await res.json();
-      if (!isValidState(remote)) return;
-      remoteReady = true;
-      snapshot = { ...snapshot, state: remote };
-      writeStorage(remote);
-      emit();
-    } catch {
-      // sin API o sin conexión: se trabaja en local
-    }
+  loadRemote() {
+    loading ??= loadFromRemote().finally(() => (loading = null)); // una sola lectura aunque se pida varias veces a la vez
+    return loading;
   },
 };
+
+let loading: Promise<void> | null = null;
+
+async function loadFromRemote() {
+  try {
+    const res = await fetch(API, { cache: 'no-store' });
+    if (res.status === 404 && res.headers.get('x-gestor-api')) {
+      remoteReady = true; // nube vacía: se sube lo local
+      pushRemote(snapshot.state);
+      return;
+    }
+    if (!res.ok) return;
+    const text = await res.text();
+    const remote = migrateState(JSON.parse(text));
+    if (!isValidState(remote)) return;
+    remoteReady = true;
+    lastSynced = text; // lo que acaba de leer ya está en la nube: solo se vuelve a subir si la migración lo cambia
+    snapshot = { ...snapshot, state: remote };
+    writeStorage(remote);
+    emit();
+  } catch {
+    // sin API o sin conexión: se trabaja en local
+  }
+}

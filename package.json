@@ -1,7 +1,7 @@
 {
   "name": "gestor-tiempo",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.10.0",
   "description": "Gestor de tiempo: tareas, calendario, proyectos y temporizador de foco.",
   "type": "module",
   "scripts": {
@@ -67,5 +67,19 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/alexlo3223/Gestion-temporal.git"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "@date-fns/tz": "^1.5.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@tanstack/react-virtual": "^3.14.26",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.5.2",
+    "date-fns": "^4.4.0",
+    "react-day-picker": "^10.0.2",
+    "shadcn": "^4.23.0",
+    "tw-animate-css": "^1.4.0"
   }
 }

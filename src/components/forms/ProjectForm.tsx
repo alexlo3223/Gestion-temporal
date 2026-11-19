@@ -13,6 +13,24 @@ export function ProjectForm({ project, fieldError = null }: { project?: Project;
       <DrawerTitle Icon={FolderPlus}>{project ? 'Editar carpeta' : 'Nueva carpeta'}</DrawerTitle>
       <LabelInput label="Nombre" name="name" required maxLength={40} autoFocus defaultValue={project?.name} error={errorFor(fieldError, 'name')} />
       <LabelInput label="Descripción" name="description" maxLength={80} defaultValue={project?.description} error={errorFor(fieldError, 'description')} />
+      <div>
+        <label htmlFor="project-phases" className="field-label">
+          Fases (una por línea)
+        </label>
+        <textarea
+          id="project-phases"
+          name="phases"
+          rows={4}
+          className="input h-auto resize-y py-2"
+          placeholder="Diseño, Desarrollo, Revisión…"
+          defaultValue={project?.phases.map((f) => f.name).join('\n')}
+          aria-describedby="project-phases-hint"
+          aria-invalid={errorFor(fieldError, 'phases') ? true : undefined}
+        />
+        <p id="project-phases-hint" className={`mt-1 text-label-sm ${errorFor(fieldError, 'phases') ? 'text-error' : 'text-outline'}`}>
+          {errorFor(fieldError, 'phases') ?? 'Agrupan las tareas en el gantt y al elegir carpeta en una tarea. Hasta 12.'}
+        </p>
+      </div>
       <fieldset>
         <legend className="field-label">Color</legend>
         <div className="flex flex-wrap gap-space-sm">

@@ -1,5 +1,7 @@
 import { Bell, BellOff, CalendarPlus, FolderPlus, ListPlus, Menu, Pause, Timer } from 'lucide-react';
+import { useRef } from 'react';
 import { actions } from '../../actions';
+import { useLiquidGlass } from '../../hooks/useLiquidGlass';
 import { useNow } from '../../hooks/useNow';
 import { todayISO } from '../../lib/dates';
 import { formatCountdown } from '../../lib/format';
@@ -46,8 +48,10 @@ function NotifyBell({ state }: { state: AppState }) {
 }
 
 export function Header({ title, state, ui }: { title: string; state: AppState; ui: UiState }) {
+  const bar = useRef<HTMLElement | null>(null);
+  useLiquidGlass(bar);
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-surface-container-high/40 bg-surface/90 px-space-md backdrop-blur-xl lg:px-space-lg">
+    <header ref={bar} className="liquid-glass liquid-glass--bar sticky top-0 z-30 flex h-14 items-center justify-between gap-2 px-space-md lg:px-space-lg">
       <div className="flex min-w-0 items-center gap-space-sm">
         <button
           type="button"

@@ -1,0 +1,142 @@
+/* LatticeLoader: cuadrícula de celdas que se encienden en secuencia. Las variables --ll-* las pone el componente. */
+.lattice-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  font-size: var(--ll-font, 14px);
+  line-height: 1;
+  color: var(--ll-color, currentColor);
+}
+
+.lattice-loader__grid {
+  display: grid;
+  flex-shrink: 0;
+}
+
+/* las dos capas (animación y marca final) ocupan el mismo sitio */
+.lattice-loader__layer {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(var(--ll-n, 3), var(--ll-cell, 6px));
+  grid-auto-rows: var(--ll-cell, 6px);
+  gap: var(--ll-gap, 2px);
+  transition: opacity 0.25s ease;
+}
+
+.lattice-loader__cell {
+  background: var(--ll-color, currentColor);
+  border-radius: 50%;
+}
+.lattice-loader[data-shape='square'] .lattice-loader__cell {
+  border-radius: 1px;
+}
+.lattice-loader__cell[data-hole] {
+  visibility: hidden;
+}
+
+/* capa de animación: cada celda reposa tenue y se enciende en su turno */
+.lattice-loader__run .lattice-loader__cell {
+  opacity: var(--ll-idle, 0.15);
+  animation: ll-lit var(--ll-cycle, 800ms) linear infinite;
+}
+.lattice-loader__run .lattice-loader__cell[data-lit='25'] {
+  animation-name: ll-lit-25;
+}
+.lattice-loader__run .lattice-loader__cell[data-lit='35'] {
+  animation-name: ll-lit-35;
+}
+.lattice-loader__run .lattice-loader__cell[data-lit='45'] {
+  animation-name: ll-lit-45;
+}
+
+/* capa de marca: invisible mientras se trabaja */
+.lattice-loader__mark {
+  opacity: 0;
+}
+.lattice-loader__mark .lattice-loader__cell {
+  background: var(--ll-mark, #22c55e);
+  visibility: hidden;
+}
+.lattice-loader__mark .lattice-loader__cell[data-on] {
+  visibility: visible;
+}
+.lattice-loader:not([data-status='working']) .lattice-loader__mark {
+  opacity: 1;
+}
+.lattice-loader:not([data-status='working']) .lattice-loader__run {
+  opacity: 0;
+}
+.lattice-loader:not([data-status='working']) .lattice-loader__run .lattice-loader__cell {
+  animation-play-state: paused;
+}
+
+/* resplandor opcional */
+.lattice-loader[data-glow] .lattice-loader__run {
+  filter: drop-shadow(0 0 3px var(--ll-glow, currentColor));
+}
+.lattice-loader[data-glow] .lattice-loader__mark {
+  filter: drop-shadow(0 0 3px var(--ll-mark-glow, #22c55e));
+}
+
+/* etiquetas: las tres ocupan el mismo sitio y solo se ve la del estado actual */
+.lattice-loader__label {
+  display: inline-grid;
+}
+.lattice-loader__text {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.lattice-loader__text[data-active] {
+  opacity: 1;
+}
+
+.lattice-loader__timer {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+  min-width: 4.2ch;
+}
+
+/* solo para lectores de pantalla */
+.lattice-loader__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* encendida durante una fracción del ciclo (62 % de serie; 25, 35 y 45 % en patrones con --lit propio) */
+@keyframes ll-lit {
+  0% { opacity: 1; }
+  62% { opacity: var(--ll-idle, 0.15); }
+  100% { opacity: var(--ll-idle, 0.15); }
+}
+@keyframes ll-lit-25 {
+  0% { opacity: 1; }
+  25% { opacity: var(--ll-idle, 0.15); }
+  100% { opacity: var(--ll-idle, 0.15); }
+}
+@keyframes ll-lit-35 {
+  0% { opacity: 1; }
+  35% { opacity: var(--ll-idle, 0.15); }
+  100% { opacity: var(--ll-idle, 0.15); }
+}
+@keyframes ll-lit-45 {
+  0% { opacity: 1; }
+  45% { opacity: var(--ll-idle, 0.15); }
+  100% { opacity: var(--ll-idle, 0.15); }
+}
+
+/* sin movimiento: celdas fijas a media intensidad */
+@media (prefers-reduced-motion: reduce) {
+  .lattice-loader__run .lattice-loader__cell {
+    animation: none;
+    opacity: 0.5;
+  }
+}
