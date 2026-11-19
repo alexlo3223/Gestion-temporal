@@ -1,0 +1,155 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+
+/* Tokens del design system "Obsidian Chrono" (ver plantillas de Stitch) */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  --color-surface: #131313;
+  --color-surface-bright: #393939;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-surface-variant: #353534;
+  --color-surface-tint: #adc6ff;
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #c2c6d6;
+  --color-outline: #8c909f;
+  --color-outline-variant: #424754;
+  --color-border-strong: #3f3f46;
+  --color-border-card: #323237;
+  --color-primary: #adc6ff;
+  --color-primary-hover: #d8e2ff;
+  --color-on-primary: #002e6a;
+  --color-primary-container: #4d8eff;
+  --color-secondary: #c6c6c7;
+  --color-secondary-fixed: #e2e2e2;
+  --color-tertiary-fixed: #e4e1e5;
+  --color-on-tertiary-container: #29292c;
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-lg: 1.25rem;
+  --spacing-space-xl: 1.75rem;
+
+  --text-headline-xl: 32px;
+  --text-headline-xl--line-height: 40px;
+  --text-headline-xl--letter-spacing: -0.02em;
+  --text-headline-xl--font-weight: 600;
+  --text-headline-xl-mobile: 26px;
+  --text-headline-xl-mobile--line-height: 34px;
+  --text-headline-xl-mobile--letter-spacing: -0.015em;
+  --text-headline-xl-mobile--font-weight: 600;
+  --text-headline-lg: 24px;
+  --text-headline-lg--line-height: 32px;
+  --text-headline-lg--letter-spacing: -0.015em;
+  --text-headline-lg--font-weight: 600;
+  --text-headline-md: 18px;
+  --text-headline-md--line-height: 26px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 500;
+  --text-headline-sm: 15px;
+  --text-headline-sm--line-height: 22px;
+  --text-headline-sm--letter-spacing: -0.005em;
+  --text-headline-sm--font-weight: 500;
+  --text-body-lg: 15px;
+  --text-body-lg--line-height: 24px;
+  --text-body-md: 13px;
+  --text-body-md--line-height: 20px;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 18px;
+  --text-label-md: 12px;
+  --text-label-md--line-height: 16px;
+  --text-label-md--letter-spacing: 0.01em;
+  --text-label-md--font-weight: 500;
+  --text-label-sm: 11px;
+  --text-label-sm--line-height: 14px;
+  --text-label-sm--letter-spacing: 0.02em;
+  --text-label-sm--font-weight: 500;
+  --text-label-caps: 10px;
+  --text-label-caps--line-height: 14px;
+  --text-label-caps--letter-spacing: 0.06em;
+  --text-label-caps--font-weight: 600;
+
+  --shadow-overlay: 0 16px 36px -4px rgb(0 0 0 / 0.7);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface text-body-md text-on-surface antialiased;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  option {
+    background-color: var(--color-surface-container);
+    color: var(--color-on-surface);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl bg-surface-container-low p-space-md;
+  }
+
+  .caps {
+    @apply text-label-caps tracking-wider text-outline uppercase;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-space-xs rounded-lg px-space-md py-1.5 text-label-md font-semibold transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-on-primary hover:bg-primary-hover;
+  }
+
+  .btn-ghost {
+    @apply bg-surface-container text-on-surface hover:bg-surface-container-high;
+  }
+
+  .btn-danger {
+    @apply text-error hover:bg-error-container/30;
+  }
+
+  .icon-btn {
+    @apply inline-flex rounded p-1 text-outline transition-colors hover:bg-surface-container-high hover:text-on-surface;
+  }
+
+  .input {
+    @apply h-[52px] w-full rounded-xl border-[1.5px] border-outline-variant bg-transparent px-3.5 text-body-md text-on-surface outline-none focus:border-primary;
+  }
+
+  .field-label {
+    @apply mb-1 block text-label-sm text-outline;
+  }
+
+  .nav-link {
+    @apply flex w-full items-center gap-space-sm rounded-lg px-space-sm py-1.5 text-left text-body-md text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface;
+  }
+
+  .nav-link.active {
+    @apply bg-surface-bright font-semibold text-on-surface;
+  }
+}

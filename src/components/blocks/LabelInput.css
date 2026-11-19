@@ -1,0 +1,113 @@
+.lbi {
+  width: 100%;
+}
+
+.lbi-box {
+  position: relative;
+  width: 100%;
+}
+
+.lbi-ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.lbi-ring path {
+  fill: none;
+  stroke: var(--color-outline-variant);
+  stroke-width: 1.5;
+  transition: stroke 0.2s;
+}
+
+.lbi[data-focus='true'] .lbi-ring path {
+  stroke: var(--color-primary);
+}
+
+.lbi[data-error='true'] .lbi-ring path {
+  stroke: var(--color-error);
+}
+
+/* el hueco: cada mitad se retira desde el centro hacia su lado */
+.lbi-ring .lbi-gap {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 0;
+  transition:
+    stroke-dashoffset 0.28s cubic-bezier(0.3, 0.7, 0.4, 1),
+    stroke 0.2s;
+}
+
+.lbi[data-up='true'] .lbi-ring .lbi-gap {
+  stroke-dashoffset: -1;
+}
+
+.lbi-label {
+  position: absolute;
+  top: 50%;
+  left: var(--lbi-x);
+  display: inline-flex;
+  translate: 0 -50%;
+  transform-origin: left center;
+  font-size: 13px;
+  color: var(--color-outline);
+  white-space: nowrap;
+  pointer-events: none;
+  transition:
+    translate 0.28s cubic-bezier(0.3, 1.2, 0.5, 1),
+    scale 0.28s cubic-bezier(0.3, 1.2, 0.5, 1),
+    color 0.2s;
+}
+
+.lbi[data-up='true'] .lbi-label {
+  translate: 0 calc(-50% - 26px);
+  scale: 0.78;
+}
+
+.lbi[data-focus='true'] .lbi-label {
+  color: var(--color-primary);
+}
+
+.lbi[data-error='true'] .lbi-label {
+  color: var(--color-error);
+}
+
+.lbi-label span {
+  display: inline-block;
+  white-space: pre;
+}
+
+.lbi[data-focus='true'] .lbi-label span {
+  animation: lbi-hop 0.36s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  animation-delay: calc(var(--i) * 14ms);
+}
+
+@keyframes lbi-hop {
+  40% {
+    transform: translateY(-3px);
+  }
+}
+
+.lbi-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--color-on-surface);
+  font-size: 13px;
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lbi-label,
+  .lbi-ring .lbi-gap {
+    transition-duration: 0s;
+  }
+
+  .lbi[data-focus='true'] .lbi-label span {
+    animation: none;
+  }
+}

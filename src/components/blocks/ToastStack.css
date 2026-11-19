@@ -1,0 +1,121 @@
+.tst {
+  position: fixed;
+  right: 16px;
+  bottom: 96px; /* por encima del dock en móvil */
+  z-index: 60;
+  width: min(320px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+@media (min-width: 64rem) {
+  .tst {
+    bottom: 20px;
+  }
+}
+
+/* abierto, todo el marco cuenta como "encima": así los huecos entre avisos no lo cierran */
+.tst[data-open] {
+  pointer-events: auto;
+}
+
+.tst-toast {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--tst-r);
+  background: var(--color-surface-container-high);
+  box-shadow: var(--shadow-overlay);
+  pointer-events: auto;
+  transform-origin: top center;
+}
+
+/* los de detrás, un gris apenas distinto */
+.tst-toast:not([data-front]) {
+  background: var(--color-surface-container);
+}
+
+.tst[data-open] .tst-toast {
+  background: var(--color-surface-container-high);
+}
+
+.tst-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+}
+
+.tst-toast[data-kind='success'] .tst-icon {
+  color: var(--color-success);
+}
+
+.tst-toast[data-kind='info'] .tst-icon {
+  color: var(--color-primary);
+}
+
+.tst-toast[data-kind='error'] .tst-icon {
+  color: var(--color-error);
+}
+
+.tst-toast[data-kind='warning'] .tst-icon {
+  color: var(--color-warning);
+}
+
+.tst-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.tst-text b {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tst-text span {
+  overflow: hidden;
+  color: var(--color-outline);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tst-act {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: calc(var(--tst-r) - 8px);
+  background: var(--color-surface-bright);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 0.15s;
+}
+
+.tst-act:hover {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.tst-x {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--color-outline);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.tst-x:hover {
+  background: var(--color-surface-bright);
+  color: var(--color-on-surface);
+}

@@ -1,0 +1,164 @@
+.pik {
+  position: relative;
+  display: inline-block;
+}
+
+.pik-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px 0 4px;
+  border: 1px solid var(--color-surface-container-high);
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.pik-pill:hover {
+  background: var(--color-surface-container-high);
+}
+
+.pik-rail {
+  position: relative;
+  flex-shrink: 0;
+  height: 28px;
+  transition: width 0.32s cubic-bezier(0.3, 1.2, 0.5, 1);
+}
+
+.pik-face,
+.pik-av {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.35);
+}
+
+.pik-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-shadow: 0 0 0 2px var(--color-surface-container);
+}
+
+.pik-say {
+  padding-left: 6px;
+  color: var(--color-on-surface-variant);
+}
+
+.pik-more {
+  color: var(--color-outline);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pik-chev {
+  color: var(--color-outline);
+  transition: rotate 0.2s;
+}
+
+.pik-pill[aria-expanded='true'] .pik-chev {
+  rotate: 180deg;
+}
+
+.pik-card {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  width: 264px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-container-low);
+  box-shadow: var(--shadow-overlay);
+  transform-origin: top left;
+}
+
+.pik-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: var(--pik-row-r);
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+.pik-row:hover,
+.pik-row:focus-visible {
+  background: var(--color-surface-container-high);
+}
+
+.pik-av {
+  flex-shrink: 0;
+}
+
+.pik-who {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.pik-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pik-role {
+  overflow: hidden;
+  color: var(--color-outline);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pik-mark {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: 5px;
+  transition: border-color 0.15s;
+}
+
+.pik-row[data-on] .pik-mark {
+  border-color: var(--color-primary);
+}
+
+.pik-tick {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.pik-clear {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--color-surface-container-high);
+  color: var(--color-primary);
+  font-size: 12px;
+  text-align: left;
+}
+
+.pik-clear:hover {
+  text-decoration: underline;
+}

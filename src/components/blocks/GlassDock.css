@@ -1,0 +1,90 @@
+.gdock {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-surface-container-high) 72%, transparent);
+  box-shadow: var(--shadow-overlay);
+  backdrop-filter: blur(18px) saturate(1.4);
+  touch-action: none;
+}
+
+.gdock-item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 52px;
+  height: 46px;
+  padding-top: 6px;
+  color: var(--color-on-surface-variant);
+  transition: color 0.2s;
+}
+
+.gdock-item[data-active='true'] {
+  color: var(--color-on-surface);
+}
+
+.gdock-glyph {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  transform-origin: bottom center;
+  transition: transform 0.18s cubic-bezier(0.3, 1.2, 0.5, 1);
+  will-change: transform;
+}
+
+.gdock-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gdock-dot[data-on='true'] {
+  opacity: 1;
+}
+
+.gdock-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 13px;
+  background: var(--color-surface-container-highest);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+/* no se desliza desde el borde la primera vez: solo tras colocarse una vez */
+.gdock-tip[data-ready] {
+  transition:
+    opacity 0.15s,
+    transform 0.25s cubic-bezier(0.3, 1.2, 0.5, 1),
+    width 0.25s cubic-bezier(0.3, 1.2, 0.5, 1);
+}
+
+.gdock-tip[data-on='true'] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gdock-glyph,
+  .gdock-tip[data-ready] {
+    transition-duration: 0s;
+  }
+}

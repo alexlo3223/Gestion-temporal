@@ -1,0 +1,11 @@
+node_modules/
+dist/
+release/
+
+# datos locales del servidor y secretos
+gestor-datos.json*
+.env
+*.local
+
+.DS_Store
+Thumbs.db

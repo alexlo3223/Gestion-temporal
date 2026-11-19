@@ -1,0 +1,263 @@
+.stb {
+  --stb-slab: var(--color-surface-container-low);
+  --stb-esc: var(--color-success);
+  position: relative;
+  padding: 16px;
+  border-radius: 0.75rem;
+  background: var(--stb-slab);
+  color: var(--color-on-surface);
+  user-select: none;
+}
+
+.stb-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stb-title {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.stb-sub {
+  font-size: 12px;
+  color: var(--color-outline);
+}
+
+.stb-seg-ctl {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--color-surface-container);
+}
+
+.stb-thumb {
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  width: calc(50% - 2px);
+  border-radius: 6px;
+  background: var(--color-surface-bright);
+  transition: translate 0.28s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.stb-seg-ctl[data-mode='Week'] .stb-thumb {
+  translate: 100% 0;
+}
+
+.stb-tab {
+  position: relative;
+  z-index: 1;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-outline);
+  transition: color 0.2s;
+}
+
+.stb-tab[data-on] {
+  color: var(--color-on-surface);
+}
+
+.stb-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+
+.stb-num {
+  display: inline-flex;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stb-digit {
+  display: inline-block;
+  white-space: pre;
+}
+
+.stb-digit[data-pop] {
+  animation: stb-pop 0.42s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  animation-delay: calc(var(--i) * 28ms);
+}
+
+@keyframes stb-pop {
+  from {
+    opacity: 0;
+    transform: translateY(40%) scale(0.9);
+  }
+}
+
+.stb-unit {
+  font-size: 12px;
+  color: var(--color-outline);
+}
+
+.stb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 14px;
+  font-size: 11px;
+  color: var(--color-on-surface-variant);
+}
+
+.stb-legend li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stb-legend i,
+.stb-tip-row i {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--c);
+}
+
+.stb-legend i[data-esc],
+.stb-tip-row[data-esc] i {
+  background: var(--stb-esc);
+}
+
+.stb-plot {
+  position: relative;
+  max-width: 100%;
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
+.stb-base {
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: var(--color-outline-variant);
+}
+
+.stb-col {
+  position: absolute;
+  inset-block: 0;
+  --d: calc(var(--i) * 14ms);
+}
+
+.stb-bar,
+.stb-esc {
+  position: absolute;
+  inset-inline: 0;
+  border-radius: var(--stb-r);
+  transition:
+    height 0.5s cubic-bezier(0.3, 1.15, 0.5, 1) var(--d),
+    bottom 0.5s cubic-bezier(0.3, 1.15, 0.5, 1) var(--d),
+    background-color 0.15s ease 0s;
+}
+
+.stb-bar {
+  background-color: var(--c);
+}
+
+.stb-esc {
+  background-color: var(--stb-esc);
+}
+
+/* el resto da un paso atrás: el color se mezcla hacia el fondo, no se desvanece */
+.stb[data-scrub] .stb-col:not([data-on]) .stb-bar {
+  background-color: color-mix(in srgb, var(--c) 30%, var(--stb-slab));
+}
+
+.stb[data-scrub] .stb-col:not([data-on]) .stb-esc {
+  background-color: color-mix(in srgb, var(--stb-esc) 30%, var(--stb-slab));
+}
+
+.stb-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--stb-rr);
+  box-shadow: 0 0 0 1.5px var(--color-on-surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.stb-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  background: var(--color-surface-container-highest);
+  box-shadow: var(--shadow-overlay);
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.stb[data-scrub] .stb-ring {
+  opacity: 0.9;
+}
+
+.stb[data-scrub] .stb-tip {
+  opacity: 1;
+}
+
+.stb-tip-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--color-outline);
+}
+
+.stb-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-on-surface-variant);
+}
+
+.stb-tip-row span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stb-tip b {
+  font-weight: 600;
+  color: var(--color-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.stb-axis {
+  display: flex;
+  justify-content: space-between;
+  max-width: 100%;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-outline);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stb-bar,
+  .stb-esc,
+  .stb-thumb {
+    transition-duration: 0s;
+  }
+
+  .stb-digit[data-pop] {
+    animation: none;
+  }
+}
